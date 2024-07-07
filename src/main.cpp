@@ -7,12 +7,15 @@
 #include "headers/shaders.h"
 #include "headers/buffers.h"
 #include "headers/uniforms.h"
+#include "headers/rgba.h"
+#include "headers/meshes.h"
 
 #define V_PI 3.1415
 
 #define WORLD_SCALE 0.025
 
-// Externs shapes
+// Externs
+extern struct rgba RGBA_BG_COLOR;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
@@ -54,6 +57,13 @@ int main()
 
 /* CREATE WINDOW SECTION DONE */
 
+/* LOAD SHAPES FOR BUFFERS */
+
+	struct gl_shape *square_mesh = load_mesh("meshes/square.glMesh");	
+	struct gl_shape *triangle_mesh = load_mesh("meshes/triangle.glMesh");	
+
+/* END LOAD SHAPES */
+
 /* CREATE BUFFERS START */
 	// Square buffers
 	struct buffer_t *VBO;
@@ -63,8 +73,8 @@ int main()
 	EBO = init_buffer(GL_ELEMENT_ARRAY_BUFFER);
 
 	// Data to be used
-	struct buffer_data square_mesh = pack_data(square, sizeof(square), sizeof(square)/sizeof(square[0]), GL_FLOAT);
-	struct buffer_data square_index = pack_data(square_indices, sizeof(square_indices), sizeof(square_indices)/sizeof(square_indices[0]), GL_FLOAT);
+	struct buffer_data square_mesh_buf = pack_data(square_mesh->vertices, sizeof(float) * square_mesh->size_v, square_mesh->size_v, GL_FLOAT);
+	struct buffer_data square_index_buf = pack_data(square_mesh->indices, sizeof(float) * square_mesh->size_i, square_mesh->size_i, GL_FLOAT);
 
 	// Store the following actions into the VAO
 	VAO = init_array();
@@ -76,9 +86,9 @@ int main()
 	bind_buffer(EBO);
 	
 	// Pass vertices into the VBO
-	set_buffer(VBO, square_mesh, GL_DYNAMIC_DRAW);
+	set_buffer(VBO, square_mesh_buf, GL_DYNAMIC_DRAW);
 	// Pass indices to the Element buffer
-	set_buffer(EBO, square_index, GL_DYNAMIC_DRAW);
+	set_buffer(EBO, square_index_buf, GL_DYNAMIC_DRAW);
 
 	//layout 0, vec2, float values, normalize false, size of space between vertex data, offset
 	set_array_attributes(0, 2, GL_FLOAT, sizeof(float)); 
@@ -95,8 +105,8 @@ int main()
 	VBO_T = init_buffer(GL_ARRAY_BUFFER);
 	EBO_T = init_buffer(GL_ELEMENT_ARRAY_BUFFER);
 
-	struct buffer_data triangle_mesh = pack_data(triangle, sizeof(triangle), sizeof(triangle)/sizeof(triangle[0]), GL_FLOAT);
-	struct buffer_data triangle_index = pack_data(tri_indices, sizeof(tri_indices), sizeof(tri_indices)/sizeof(tri_indices[0]), GL_FLOAT);
+	struct buffer_data triangle_mesh_buf = pack_data(triangle_mesh->vertices, sizeof(float) * triangle_mesh->size_v, triangle_mesh->size_v, GL_FLOAT);
+	struct buffer_data triangle_index_buf = pack_data(triangle_mesh->indices, sizeof(float) * triangle_mesh->size_i, triangle_mesh->size_i, GL_FLOAT);
 
 	// Store the following actions into the VAO
 	VAO_T = init_array();
@@ -108,9 +118,9 @@ int main()
 	bind_buffer(EBO_T);
 	
 	// Pass vertices into the VBO
-	set_buffer(VBO_T, triangle_mesh, GL_DYNAMIC_DRAW);
+	set_buffer(VBO_T, triangle_mesh_buf, GL_DYNAMIC_DRAW);
 	// Pass indices to the Element buffer
-	set_buffer(EBO_T, triangle_index, GL_DYNAMIC_DRAW);
+	set_buffer(EBO_T, triangle_index_buf, GL_DYNAMIC_DRAW);
 
 	//layout 0, vec2, float values, normalize false, size of space between vertex data, offset
 	set_array_attributes(0, 2, GL_FLOAT, sizeof(float)); 
@@ -141,6 +151,10 @@ int main()
 /* */
 	int glStatus = (int) glGetError();
 	//fprintf(stdout, "Preloop %d\n", glStatus);
+	
+/* Pre-screen configuration */
+	struct rgba bg_color = convert_to_rgba(0.0f, 0.1f, 0.1f, 1.0f);
+	set_bg_color(bg_color);
 
 /* MAIN LOOP START */
 	while(!glfwWindowShouldClose(window))
@@ -148,7 +162,7 @@ int main()
 		processInput(window);
 
 		// Clear the screen
-		glClearColor(0.0f, 0.1f, 0.1f, 1.0f);
+		glClearColor(RGBA_BG_COLOR.r, RGBA_BG_COLOR.g, RGBA_BG_COLOR.b, RGBA_BG_COLOR.a);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		//glBindVertexArray(VAO);
@@ -174,7 +188,7 @@ int main()
 		// Draw a square
 		bind_array(VAO);
 
-		glDrawElements(GL_TRIANGLES, square_index.elements, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, square_index_buf.elements, GL_UNSIGNED_INT, 0);
 
 		rotation_val = V_PI/4.0f;
 		set_uniforms1(rotation_val, shader1, "rotationRad");
@@ -186,7 +200,7 @@ int main()
 
 		// Bind the triangle and draw
 		bind_array(VAO_T);
-		glDrawElements(GL_TRIANGLES, triangle_index.elements, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, triangle_index_buf.elements, GL_UNSIGNED_INT, 0);
 //		glDrawArrays(GL_TRIANGLES, 0, 3);
 
 		glfwSwapBuffers(window);
@@ -201,6 +215,9 @@ int main()
 	delete_buffer(VBO);
 	delete_buffer(EBO);
 	glDeleteProgram(shader1);
+
+	destroy_gl_shape(square_mesh);
+	destroy_gl_shape(triangle_mesh);
 
 	glfwTerminate();
 	return 0;
