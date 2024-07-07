@@ -1,0 +1,25 @@
+Vertex Shader 
+	Normalized device coordinates between -1,1
+	3 dimensional vertices ->
+
+
+glViewPort is used to transform the NDC coordinates to screen coordinates
+	0,0 to WIDTH,HEIGHT
+
+
+A vertex buffer object allows us to write memory to the GPU using a buffer of vertices
+	glBufferData point to the data and describes it
+
+The vertex shader uses GLSL, which has data types of vec3, vec4, etc
+	
+glVertexAttribPointer
+	Describes our data in the VBO to the vertex shader
+	Size, type, and size of each array element (this can be set to 0 for automatic detection when data has no padding), 
+
+Vertex Array Objects store calls to glVertexAttribPointer, glEnableVertexAttribArray, and VBOs
+	VAOs are usually bound and called per object we wish to render?
+
+glDrawArrays will draw after calling glBindVertexArray(VAO);
+
+
+Element Buffer Arrays store the order to index an array of vertices to get the desired triangles from them, instead of storing redundant triangles in the array of vertices
