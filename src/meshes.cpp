@@ -1,6 +1,9 @@
 #include <iostream>
 #include <stdlib.h>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
+#include "headers/buffers.h"
 #include "headers/meshes.h"
 #include "headers/shapes.h"
 
@@ -110,4 +113,63 @@ struct gl_shape *load_mesh(const char *filen)
 	free(buffer);
 
 	return mesh;
+}
+
+struct gl_mesh *init_mesh(struct gl_shape *sp)
+{
+	struct gl_mesh *mp = (struct gl_mesh *)malloc(sizeof(struct gl_mesh));
+	mp->shape = sp;
+	mp->VBO = NULL;
+	mp->EBO = NULL;
+	mp->VAO = 0;
+	mp->num_indices = 0;
+
+	return mp;
+}
+
+int build_buffers(struct gl_mesh *mp)
+{
+	if (mp == NULL)
+		return 1;
+	if (mp->shape == NULL)
+		return 1;
+
+	struct buffer_data mesh_buf = pack_data((mp->shape)->vertices, sizeof(float) * (mp->shape)->size_v, (mp->shape)->size_v, GL_FLOAT);
+	struct buffer_data index_buf = pack_data((mp->shape)->indices, sizeof(float) * (mp->shape)->size_i, (mp->shape)->size_i, GL_FLOAT);
+
+	mp->num_indices = index_buf.elements;
+	// Create the glBuffers
+	mp->VBO = init_buffer(GL_ARRAY_BUFFER);
+	mp->EBO = init_buffer(GL_ELEMENT_ARRAY_BUFFER);
+
+	// Create the object's VAO
+	mp->VAO = init_array();
+	bind_buffer(mp->VBO);
+	bind_buffer(mp->EBO);
+
+	// Load the data into the buffers
+	set_buffer(mp->VBO, mesh_buf, GL_DYNAMIC_DRAW);
+	set_buffer(mp->EBO, index_buf, GL_DYNAMIC_DRAW);
+
+	// Set the array attributes for the vertex shader
+	int num_layouts = 2;
+	set_array_attributes(0, 2, GL_FLOAT, sizeof(float), num_layouts, 0);
+	set_array_attributes(1, 2, GL_FLOAT, sizeof(float), num_layouts, 2);
+
+	bind_array(0);
+	return 0;
+
+}
+
+void destroy_mesh(struct gl_mesh *mp)
+{
+	if (mp == NULL)
+		return ;
+	if (mp->shape != NULL)
+		destroy_gl_shape(mp->shape);
+	if (mp->VBO != NULL)
+		delete_buffer(mp->VBO);
+	if (mp->EBO != NULL)
+		delete_buffer(mp->EBO);
+	free(mp);
 }

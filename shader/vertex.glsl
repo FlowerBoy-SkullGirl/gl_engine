@@ -1,11 +1,14 @@
 #version 330 core
 layout (location = 0) in vec2 local_coords;
+layout (location = 1) in vec2 tex_coords;
 
 uniform float rotationRad;
 uniform vec2 scalars;
 uniform vec2 translation;
 uniform vec2 screen_scalar;
+uniform vec2 cameraPos;
 
+out vec2 frag_tex_coords;
 
 vec2 rotate(inout vec2 coords)
 {
@@ -28,13 +31,13 @@ vec2 translate(inout vec2 coords)
 
 vec2 scale_to_screen(inout vec2 coords)
 {
-	return coords * screen_scalar;
+	return (coords - cameraPos) * screen_scalar;
 }
 
 vec2 transformations(in vec2 coords)
 {
 	vec2 coords_t = coords;
-	return scale(translate(rotate(coords_t)));	
+	return translate(rotate(scale(coords_t)));	
 }
 
 void main()
@@ -42,4 +45,5 @@ void main()
 	vec2 worldCoords = vec2(transformations(local_coords));
 	vec2 screenCoords = vec2(scale_to_screen(worldCoords));
 	gl_Position = vec4(screenCoords.x, screenCoords.y, 0.0, 1.0);
+	frag_tex_coords = tex_coords;
 }

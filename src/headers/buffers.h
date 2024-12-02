@@ -29,7 +29,7 @@ unsigned int init_array();
 
 void bind_array(unsigned int);
 
-// Layout, number, GLTYPE, size
-void set_array_attributes(int, int, GLenum, int);
+// Layout, number, GLTYPE, size, offset
+void set_array_attributes(int, int, GLenum, int, int, int);
 
 #endif

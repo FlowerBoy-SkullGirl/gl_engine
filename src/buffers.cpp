@@ -62,8 +62,8 @@ unsigned int init_array()
 	return VAO;
 }
 
-void set_array_attributes(int layout, int num, GLenum type, int size)
+void set_array_attributes(int layout, int num, GLenum type, int size, int num_layouts, int offset)
 {
-	glVertexAttribPointer(layout, num, type, GL_FALSE, num * size, (void *) 0);	
+	glVertexAttribPointer(layout, num, type, GL_FALSE, num * size * num_layouts, (void *) (offset * size));	
 	glEnableVertexAttribArray(layout);
 }

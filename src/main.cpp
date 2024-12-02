@@ -9,13 +9,35 @@
 #include "headers/uniforms.h"
 #include "headers/rgba.h"
 #include "headers/meshes.h"
+#include "headers/textures.h"
+#include "headers/objects.h"
+#include "headers/camera.h"
+#include "headers/object_list.h"
+#include "headers/keybinds.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "headers/stb_image.h"
 
 #define V_PI 3.1415
 
 #define WORLD_SCALE 0.025
+#define BASE_VEL 3.0
 
 // Externs
 extern struct rgba RGBA_BG_COLOR;
+extern float g_world_scale;
+extern float g_cam_x;
+extern float g_cam_y;
+extern int keybind_up;
+extern int keybind_down;
+extern int keybind_left;
+extern int keybind_right;
+
+// Local globals
+float g_time;
+float g_delta_t;
+
+struct game_object *player_object;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
@@ -24,6 +46,23 @@ void processInput(GLFWwindow *window)
 {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if(glfwGetKey(window, keybind_up) == GLFW_PRESS){
+	set_object_pos(player_object, player_object->pos_x, player_object->pos_y + (BASE_VEL * g_delta_t));
+	set_object_rotation(player_object, 0.0f);
+    }
+    if(glfwGetKey(window, keybind_down) == GLFW_PRESS){
+	set_object_pos(player_object, player_object->pos_x, player_object->pos_y - (BASE_VEL * g_delta_t));
+	set_object_rotation(player_object, V_PI);
+    }
+    if(glfwGetKey(window, keybind_left) == GLFW_PRESS){
+	set_object_pos(player_object, player_object->pos_x - (BASE_VEL * g_delta_t), player_object->pos_y);
+	set_object_rotation(player_object, (3.0f * V_PI/2.0f));
+    }
+    if(glfwGetKey(window, keybind_right) == GLFW_PRESS){
+	set_object_pos(player_object, player_object->pos_x + (BASE_VEL * g_delta_t), player_object->pos_y);
+	set_object_rotation(player_object, (V_PI/2.0f));
+    }
+	  
 }
 
 int main()
@@ -59,76 +98,73 @@ int main()
 
 /* LOAD SHAPES FOR BUFFERS */
 
-	struct gl_shape *square_mesh = load_mesh("meshes/square.glMesh");	
-	struct gl_shape *triangle_mesh = load_mesh("meshes/triangle.glMesh");	
+	struct gl_shape *square_shape = load_mesh("meshes/square.glMesh");	
+	struct gl_shape *triangle_shape = load_mesh("meshes/triangle.glMesh");	
 
+	struct gl_mesh *square_mesh = init_mesh(square_shape);
+	struct gl_mesh *triangle_mesh = init_mesh(triangle_shape);
+
+	build_buffers(square_mesh);
+	build_buffers(triangle_mesh);
+
+	bind_array(0);
 /* END LOAD SHAPES */
 
-/* CREATE BUFFERS START */
-	// Square buffers
-	struct buffer_t *VBO;
-	struct buffer_t *EBO;
-	unsigned int VAO;
-	VBO = init_buffer(GL_ARRAY_BUFFER);
-	EBO = init_buffer(GL_ELEMENT_ARRAY_BUFFER);
+/* LOAD TEXTURES */
 
-	// Data to be used
-	struct buffer_data square_mesh_buf = pack_data(square_mesh->vertices, sizeof(float) * square_mesh->size_v, square_mesh->size_v, GL_FLOAT);
-	struct buffer_data square_index_buf = pack_data(square_mesh->indices, sizeof(float) * square_mesh->size_i, square_mesh->size_i, GL_FLOAT);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	stbi_set_flip_vertically_on_load(true);
+	unsigned int cloud_tex = load_texture("textures/cloud.png");
+/* END LOAD TEXTURES */
 
-	// Store the following actions into the VAO
-	VAO = init_array();
+/* CREATE OBJECTS WITH BUFFERS */
+	struct object_list *bg_objects = create_object_list_node();
+	struct object_list *mid_objects = create_object_list_node();
+	struct object_list *fg_objects = create_object_list_node();
 
-	bind_buffer(VBO);
-	//use glBufferData to pass the indices to vectors into the array
+	struct game_object *tall_square = init_game_object();
+	set_object_mesh(tall_square, square_mesh);
+	set_object_rotation(tall_square, (V_PI/6.0f));
+	set_object_pos(tall_square, 2.0f, -4.0f); 
+	set_object_scale(tall_square, 1.0f, 4.0f); 
+	append_object(mid_objects, tall_square);
 
-	// Element Buffer
-	bind_buffer(EBO);
-	
-	// Pass vertices into the VBO
-	set_buffer(VBO, square_mesh_buf, GL_DYNAMIC_DRAW);
-	// Pass indices to the Element buffer
-	set_buffer(EBO, square_index_buf, GL_DYNAMIC_DRAW);
+	struct game_object *spinning_square = init_game_object();
+	set_object_mesh(spinning_square, square_mesh);
+	set_object_scale(spinning_square, 3.0f, 3.0f);
+	set_object_color(spinning_square, convert_to_rgba(1.0f, 0.0f, 0.0f, 1.0f));
+	append_object(mid_objects, spinning_square);
 
-	//layout 0, vec2, float values, normalize false, size of space between vertex data, offset
-	set_array_attributes(0, 2, GL_FLOAT, sizeof(float)); 
-//	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *) 0);
-//	glEnableVertexAttribArray(0);
+	struct game_object *weird_triangle = init_game_object();
+	set_object_mesh(weird_triangle, triangle_mesh);
+	set_object_rotation(weird_triangle, (V_PI/4.0f));
+	set_object_pos(weird_triangle, 10.0f, 14.0f);
+	set_object_scale(weird_triangle, 2.0f, 2.0f);
+	set_object_color(weird_triangle, convert_to_rgba(0.0f, 1.0f, 0.0f, 1.0f));
+	append_object(mid_objects, weird_triangle);
 
-	bind_array(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	struct game_object *cloud1 = init_game_object();
+	set_object_mesh(cloud1, square_mesh);
+	set_object_scale(cloud1, 4.0f, 2.0f);
+	set_object_texture(cloud1, cloud_tex);
+	append_object(fg_objects, cloud1);
 
-	// Triangle buffers
-	struct buffer_t *VBO_T;
-	struct buffer_t *EBO_T;
-	unsigned int VAO_T;
-	VBO_T = init_buffer(GL_ARRAY_BUFFER);
-	EBO_T = init_buffer(GL_ELEMENT_ARRAY_BUFFER);
+	struct game_object *cloud2 = init_game_object();
+	set_object_mesh(cloud2, square_mesh);
+	set_object_scale(cloud2, 4.0f, 2.0f);
+	set_object_texture(cloud2, cloud_tex);
+	append_object(bg_objects, cloud2);
 
-	struct buffer_data triangle_mesh_buf = pack_data(triangle_mesh->vertices, sizeof(float) * triangle_mesh->size_v, triangle_mesh->size_v, GL_FLOAT);
-	struct buffer_data triangle_index_buf = pack_data(triangle_mesh->indices, sizeof(float) * triangle_mesh->size_i, triangle_mesh->size_i, GL_FLOAT);
+	// Player object
+	player_object = init_game_object();
+	set_object_mesh(player_object, triangle_mesh);
+	set_object_scale(player_object, 3.0f, 3.0f);
+	set_object_pos(player_object, 0.0f, 0.0f);
+	set_object_color(player_object, convert_to_rgba(0.0f, 0.0f, 1.0f, 0.8f));
+	append_object(mid_objects, player_object);
 
-	// Store the following actions into the VAO
-	VAO_T = init_array();
-
-	bind_buffer(VBO_T);
-	//use glBufferData to pass the indices to vectors into the array
-
-	// Element Buffer
-	bind_buffer(EBO_T);
-	
-	// Pass vertices into the VBO
-	set_buffer(VBO_T, triangle_mesh_buf, GL_DYNAMIC_DRAW);
-	// Pass indices to the Element buffer
-	set_buffer(EBO_T, triangle_index_buf, GL_DYNAMIC_DRAW);
-
-	//layout 0, vec2, float values, normalize false, size of space between vertex data, offset
-	set_array_attributes(0, 2, GL_FLOAT, sizeof(float)); 
-
-	bind_array(0);
-
-
-/* CREATE BUFFERS DONE */
+/* END CREATE OBJECTS */
 
 	//Initialize VECTOR MODE
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -156,52 +192,67 @@ int main()
 	struct rgba bg_color = convert_to_rgba(0.0f, 0.1f, 0.1f, 1.0f);
 	set_bg_color(bg_color);
 
+	set_world_scale(WORLD_SCALE);
+	set_cam_pos(0.0f, 0.0f);
+
+	set_key_up(GLFW_KEY_F);
+	set_key_down(GLFW_KEY_S);
+	set_key_left(GLFW_KEY_R);
+	set_key_right(GLFW_KEY_T);
+
 /* MAIN LOOP START */
 	while(!glfwWindowShouldClose(window))
 	{
+		// Process delta time
+		float time = glfwGetTime();
+		g_delta_t = time - g_time;
+		g_time = time;
+		
+		// Process input
 		processInput(window);
 
 		// Clear the screen
 		glClearColor(RGBA_BG_COLOR.r, RGBA_BG_COLOR.g, RGBA_BG_COLOR.b, RGBA_BG_COLOR.a);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//glBindVertexArray(VAO);
-		// Pass vertices into the VBO
-//		glBufferData(GL_ARRAY_BUFFER, sizeof(square), square, GL_DYNAMIC_DRAW);
-		// Pass indices to the Element buffer
-//		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(square_indices), square_indices, GL_DYNAMIC_DRAW);
-
 		// Use the vertex shader
 		use_shader(shader1);
 
 		// Set uniform values
-		set_uniforms2(WORLD_SCALE, WORLD_SCALE, shader1, "screen_scalar");
+		update_camera(shader1);
+		set_uniforms2(g_world_scale, g_world_scale, shader1, "screen_scalar");
 
+		// Prepare spinning square
 		float rotation_val = glfwGetTime();
-		set_uniforms1(rotation_val, shader1, "rotationRad");
-		set_uniforms2(3.0f, 3.0f, shader1, "scalars");
-		set_uniforms2(-2.0f, -4.0f, shader1, "translation");
-		// Fragment uniforms
-		set_uniforms4(1.0f, 0.0f, 0.0f, 1.0f, shader1, "color");
+		set_object_rotation(spinning_square, rotation_val);
+		set_object_pos(spinning_square, -7.0f, -14.0f);
 
-		// Bind the VAO
-		// Draw a square
-		bind_array(VAO);
+		// Draw a cloud
+		float cloud_x = (1.0 / WORLD_SCALE) * sin(glfwGetTime() / 30.0f);
+		float cloud_y = 0.0f;
+		set_object_pos(cloud1, cloud_x, cloud_y);
 
-		glDrawElements(GL_TRIANGLES, square_index_buf.elements, GL_UNSIGNED_INT, 0);
+		// Draw more clouds
+		cloud_x += 3.0f;
+		cloud_x *= 1.3f;
+		cloud_y -= 4.0f;
+		set_object_pos(cloud2, cloud_x, cloud_y);
 
-		rotation_val = V_PI/4.0f;
-		set_uniforms1(rotation_val, shader1, "rotationRad");
-		set_uniforms2(2.0f, 4.0f, shader1, "scalars");
-		set_uniforms2(1.0f, 4.0f, shader1, "translation");
+		// Draw all background objects
+		for (int i = 0; access_go_list_index(bg_objects, i) != NULL; i++){
+			draw_game_object((access_list_index(bg_objects, i))->op, shader1);
+		}
 
-		// Fragment uniforms
-		set_uniforms4(0.0f, 1.0f, 0.0f, 1.0f, shader1, "color");
+		// Draw all middling objects
+		for (int i = 0; access_go_list_index(mid_objects, i) != NULL; i++){
+			draw_game_object((access_list_index(mid_objects, i))->op, shader1);
+		}
 
-		// Bind the triangle and draw
-		bind_array(VAO_T);
-		glDrawElements(GL_TRIANGLES, triangle_index_buf.elements, GL_UNSIGNED_INT, 0);
-//		glDrawArrays(GL_TRIANGLES, 0, 3);
+		// Draw all foreground objects
+		for (int i = 0; access_go_list_index(fg_objects, i) != NULL; i++){
+			draw_game_object((access_list_index(fg_objects, i))->op, shader1);
+		}
+
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();    
@@ -211,13 +262,14 @@ int main()
 /* MAIN LOOP DONE */
 
 /* CLEAN UP */
-	glDeleteVertexArrays(1, &VAO);
-	delete_buffer(VBO);
-	delete_buffer(EBO);
 	glDeleteProgram(shader1);
 
-	destroy_gl_shape(square_mesh);
-	destroy_gl_shape(triangle_mesh);
+	destroy_mesh(square_mesh);
+	destroy_mesh(triangle_mesh);
+
+	destroy_object_list(bg_objects);
+	destroy_object_list(mid_objects);
+	destroy_object_list(fg_objects);
 
 	glfwTerminate();
 	return 0;

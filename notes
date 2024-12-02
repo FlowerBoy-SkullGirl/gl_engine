@@ -23,3 +23,33 @@ glDrawArrays will draw after calling glBindVertexArray(VAO);
 
 
 Element Buffer Arrays store the order to index an array of vertices to get the desired triangles from them, instead of storing redundant triangles in the array of vertices
+
+
+Ideas IF hitbox detection ever becomes a performance bottleneck:
+	- Object 1 is not moving, only check it's collision against objects that are moving
+	- Each object will only check collision with objects that are near to it and will ignore distances over its threshold
+	- ???
+
+Hitbox translation, scale, and rotation are done on CPU to replicate transformations of attached objects in the vertex shader
+
+
+ARCHITECTURAL DECISIONS
+ - Meshes are re-used, so structs that contain a mesh pointer do NOT free the mesh pointer when they are destroyed
+ - This is relevant to game_objects and hitboxes
+ - Assume all meshes are normalized between -1 and 1 so scaling is uniform???
+ - HITBOX is square -> Split into quadrants -> apply normal force as rotation_offset_hitbox + rotation_object + integer multiple of PI/2 -> ??? -> Profit?
+ - Velocity with x and y comp can be treated as a directional vector, we can transform the direction of the normal force into a vector, add the two, normalize, and then we have the angle of trajectory after a collision
+
+
+Use function pointers so that the program can determine what should happen on input dynamically?
+ - Example: if (gl_key_up) == GLFW_PRESS then process_func_list(struct function_list *functions) else continue;
+ - struct function_list{ (void *)fp(struct game_object *); struct function_list *next; struct game_object *subject; };
+ - must contain the subject of the determined action with the function that is to be performed?
+
+ Could get REALLY complicated like this... maybe have game_objects store predetermined actions? Like destroy(), move_up, etc?
+ Or load instructions from a file at runtime? - less dynamic
+
+
+
+CREATE A SYSTEM that loads game objects from a file
+the same way as is done with meshes

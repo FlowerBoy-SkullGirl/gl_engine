@@ -1,0 +1,21 @@
+meshfile="meshes/square.glMesh";
+texfile="textures/cloud.png";
+
+rotation=0.0;
+pos_x=0.0;
+pos_y=0.0;
+scale_x=4.0;
+scale_y=2.0;
+mass=1.0;
+r_momentum=0.85;
+
+hitboxes={
+	"meshes/square_hitbox.glMesh",
+	scale=1.0,
+	pos_x=0.0,
+	pos_y=0.0, 
+	rotation=0.0;
+};
+
+use_tex=1;
+use_hitbox=1;

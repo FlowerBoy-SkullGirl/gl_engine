@@ -26,3 +26,9 @@ void set_uniforms4(float x, float y, float z, float w, unsigned int program, con
 	int id = glGetUniformLocation(program, uniform);
 	glUniform4f(id, x, y, z, w);
 }
+
+void set_uniform_int(int val, unsigned int program, const char *uniform)
+{
+	int id = glGetUniformLocation(program, uniform);
+	glUniform1i(id, val);
+}

@@ -11,4 +11,6 @@ void set_uniforms3(float, float, float, unsigned int, const char *);
 
 void set_uniforms4(float, float, float, float, unsigned int, const char *);
 
+void set_uniform_int(int, unsigned int, const char *);
+
 #endif
