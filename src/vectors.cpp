@@ -9,7 +9,6 @@
 #define R_EARTH 6.371e6
 #define M_EARTH 5.972e24
 
-double g_
 
 void rotate2(float *x, float *y, float r)
 {
@@ -31,6 +30,12 @@ void scale2(float *x, float *y, float s_x, float s_y)
 {
 	*x *= s_x;
 	*y *= s_y;
+}
+
+void transform2x2(float a, float b, float c, float d, float *x, float *y)
+{
+	*x = ((*x) * a) + ((*y) * b);
+	*y = ((*x) * c) + ((*y) * d);
 }
 
 // Find the distance between two points
@@ -170,6 +175,13 @@ struct velocity find_v_after_collision(double mag_N, double r, struct velocity v
 double max_dimension(double sx, double sy)
 {
 	if (sx > sy)
+		return sx;
+	return sy;
+}
+
+double min_dimension(double sx, double sy)
+{
+	if (sx < sy)
 		return sx;
 	return sy;
 }

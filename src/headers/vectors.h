@@ -12,6 +12,8 @@ void translate2(float *, float *, float, float);
 
 void scale2(float *, float *, float, float);
 
+void transform2x2(float, float, float, float, float *, float *);
+
 double distance2(double, double, double, double);
 
 // x1, y1, x2, y2, distance
@@ -30,11 +32,13 @@ struct velocity find_vel_gravity(double, double, double, double, double, double,
 double find_normal_angle(double, double, double, double, double);
 
 // Mass 1, mass 2
-double find_normal_magnitude(double, double)
+double find_normal_magnitude(double, double);
 
 // Normalized magnitude of normal force, angle of new trajectory, and original velocity magnitude
 struct velocity find_v_after_collision(double, double, struct velocity v);
 
 double max_dimension(double, double);
+
+double min_dimension(double, double);
 
 #endif

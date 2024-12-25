@@ -4,15 +4,15 @@
 #include <GLFW/glfw3.h>
 
 #include "headers/shapes.h"
+#include "headers/rgba.h"
 #include "headers/meshes.h"
 #include "headers/hitbox.h"
 #include "headers/hitbox_list.h"
 #include "headers/buffers.h"
 #include "headers/textures.h"
-#include "headers/rgba.h"
 #include "headers/uniforms.h"
-#include "headers/objects.h"
 #include "headers/vectors.h" // velocity struct
+#include "headers/objects.h"
 
 #define DEFAULT_R_MOMENTUM 0.7
 

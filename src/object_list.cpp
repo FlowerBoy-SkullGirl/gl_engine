@@ -4,6 +4,7 @@
 #include "headers/rgba.h"
 #include "headers/objects.h"
 #include "headers/object_list.h"
+#include "headers/vectors.h"
 
 struct object_list *create_object_list_node()
 {

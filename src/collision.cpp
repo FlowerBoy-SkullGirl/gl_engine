@@ -3,9 +3,124 @@
 #include "headers/hitbox_list.h"
 #include "headers/objects.h"
 #include "headers/object_list.h"
+#include <cmath>
 
 #define DEFAULT_MESH_SIZE 2.0
 float g_mesh_max_size = sqrt(DEFAULT_MESH_SIZE);
+
+int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_object *ob2, struct gl_hitbox *hb2)
+{
+	int collision_detected = 0;
+	// Add the angles of the object and their relative hitbox and use unit circle ranges
+	double r1 = fmodl((ob1->rotation) + (hb1->offset_rot), G_PI * 2.0f);
+	struct velocity p1;
+	p1.x = (ob1->pos_x) + (hb1->offset_x);
+	p1.y = (ob1->pos_y) + (hb1->offset_y);
+
+	double r2 = fmodl((ob2->rotation) + (hb2->offset_rot), G_PI * 2.0f);
+	struct velocity p2;
+	p2.x = (ob2->pos_x) + (hb2->offset_x);
+	p2.y = (ob2->pos_y) + (hb2->offset_y);
+
+	// Check if the objects are near enough to collide
+	double longest_d = (max_dimension(hb1->scale_x, hb1->scale_y) * g_mesh_max_size) + (max_dimension(hb2->scale_x, hb2->scale_y) * g_mesh_max_size);
+	if (distance2(p1->pos_x, p1->pos_y, p2->pos_x, p2->pos_y) < longest_d)
+		return 0;
+
+	// Find the difference between their rotation so that hb2 can be transformed into hb1 space
+	double delta_r = r2 - r1;
+	double delta_s_x = (hb2->scale_x) / (hb1->scale_x);
+	double delta_s_y = (hb2->scale_y) / (hb1->scale_y);
+	double delta_pos_x = (p2.x) - (p1.x);
+	double delta_pos_y = (p2.y) - (p1.y);
+	// Apply the necessary transformations to the vertices to determine their edges
+	float *vert1 = (float *)malloc((sizeof(float) * (hb1->mesh->shape->size_v)));
+	float *vert2 = (float *)malloc((sizeof(float) * (hb2->mesh->shape->size_v)));
+
+	// Hb1 vertices will be normalized to -1, 1
+	// Hb2 will be transformed with hb1 space as the basis
+	// This allows barycentric coordinates for collision detection
+	for (int i = 0; i < (hb2->mesh->shape->size_v); i += 2){
+		*(vert2 + i) = *((hb2->mesh->shape)->vertices + i);
+		*(vert2 + i + 1) = *((hb2->mesh->shape)->vertices + i + 1);
+		// Transform the vertices into 'hb1 space' relative to its scale, rotation, and pos
+		scale2((vert2 + i), (vert2 + i + 1), delta_s_x, delta_s_y);
+		rotate2((vert2 + i), (vert2 + i + 1), delta_r);
+		translate2((vert2 + i), (vert2 + i + 1), delta_pos_x, delta_pos_y);
+	}
+	
+	// Determine if hitbox 2 has a vertex inside hitbox 1 using barycentric coordinates
+	// First check if any vertices are within -1, 1 (collision true)
+	for (int i = 0; i < (hb2->mesh->shape->size_v); i += 2){
+		if( fabs(*(vert2 + i)) <= 1 && fabs(*(vert2 + i + 1)) <= 1){
+			collision_detected = 1;
+			break;
+		}
+	}
+
+	//Transform hb1 into hb2 space to check if its vertices lie inside hb2
+	delta_r = r1 - r2;
+	delta_s_x = (hb1->scale_x) / (hb2->scale_x);
+	delta_s_y = (hb1->scale_y) / (hb2->scale_y);
+	delta_pos_x = (p1.x) - (p2.x);
+	delta_pos_y = (p1.y) - (p2.y);
+
+	for (int i = 0; i < (hb1->mesh->shape->size_v); i += 2){
+		*(vert1 + i) = *((hb1->mesh->shape)->vertices + i);
+		*(vert1 + i + 1) = *((hb1->mesh->shape)->vertices + i + 1);
+		scale2((vert1 + i), (vert1 + i + 1), delta_s_x, delta_s_y);
+		rotate2((vert1 + i), (vert1 + i + 1), delta_r);
+		translate2((vert1 + i), (vert1 + i + 1), delta_pos_x, delta_pos_y);
+	}
+
+	for (int i = 0; i < (hb2->mesh->shape->size_v); i += 2){
+		if( fabs(*(vert2 + i)) <= 1 && fabs(*(vert2 + i + 1)) <= 1){
+			collision_detected = 1;
+			break;
+		}
+	}
+/*    ALTERNATIVE LOGIC IF HB1 is not converted to hb2 space
+ * // Then check if any edge moves across -1 or 1 in both axes (collision true)
+	for (int i = 0; i < (hb2->mesh->shape->size_v); i += 2){
+		int x_cross = 0;
+		int y _cross = 0;
+		float x1 = 0.0f;
+		float x2 = 0.0f;
+		float y1 = 0.0f;
+		float y2 = 0.0f;
+		if (collision_detected)
+			break;
+		// if on last vertex
+		if (i + 2 == (hb2->mesh->shape->size_v){
+			x1 = min_dimension(*(vert2 + i), *vert2);
+			x2 = max_dimension(*(vert2 + i), *vert2);
+			y1 = min_dimension(*(vert2 + i + 1), *(vert2 + 1));
+			y2 = max_dimension(*(vert2 + i + 1), *(vert2 + 1));
+		}else{
+			x1 = min_dimension(*(vert2 + i), *(vert2 + i + 2));
+			x2 = max_dimension(*(vert2 + i), *(vert2 + i + 2));
+			y1 = min_dimension(*(vert2 + i + 1), *(vert2 + i + 3));
+			y2 = max_dimension(*(vert2 + i + 1), *(vert2 + i + 3));
+		}
+		if((x1 <= -1 && x2 >= -1) || (x1 <= 1 && x2 >= 1))
+			x_cross = 1;
+		if((y1 <= -1 && y2 >= -1) || (y1 <= 1 && y2 >= 1))
+			y_cross = 1;
+		if (x_cross && y_cross)
+			collision_detected = 1;
+	}
+*/
+	// Check if every edge moves across -1 and 1 (hb1 is inside hb2, collision true)
+	// // 0(0, 1), 1(2, 3), 2(4, 5), 3(6, 7)
+	// // Edges are 0-1, 1-2, 2-3, 3-0
+	// // If pattern (+, +), (+, -), (-, -), (-, +) with abs values all greater than 1, then collision
+	// // Essentially, look through vertex array for EXACTLY 4 pos or 4 neg contiguous values, allowing no other pos/neg
+	// // But only 1 pair can be all neg or all pos
+	// // Alternatively check if any 1 vertex from hb1 is inside hb2 by transforming the hb1 coordinates
+	
+	free(vert1);
+	free(vert2);
+}
 
 int check_collision_objects(struct game_object *ob1, struct game_object *ob2)
 {
@@ -37,45 +152,4 @@ int check_collision_objects(struct game_object *ob1, struct game_object *ob2)
 
 }
 
-int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_object *ob2, struct gl_hitbox *hb2)
-{
-	// Add the angles of the object and their relative hitbox and use unit circle ranges
-	double r1 = fmodl((ob1->rotation) + (hb1->offset_rot), G_PI * 2.0f);
-	struct velocity p1;
-	p1.x = (ob1->pos_x) + (hb1->offset_x);
-	p1.y = (ob1->pos_y) + (hb1->offset_y);
 
-	double r2 = fmodl((ob2->rotation) + (hb2->offset_rot), G_PI * 2.0f);
-	struct velocity p2;
-	p2.x = (ob2->pos_x) + (hb2->offset_x);
-	p2.y = (ob2->pos_y) + (hb2->offset_y);
-
-	// Check if the objects are near enough to collide
-	double longest_d = (max_dimension(hb1->scale_x, hb1->scale_y) * g_mesh_max_size) + (max_dimension(hb2->scale_x, hb2->scale_y) * g_mesh_max_size);
-	if (distance2(p1->pos_x, p1->pos_y, p2->pos_x, p2->pos_y) < longest_d)
-		return 0;
-
-	// Find the difference between their rotation so that hb2 can be transformed into hb1 space
-	double delta_r = r1 - r2;
-	// Apply the necessary transformations to the vertices to determine their edges
-	float *vert1 = (float *)malloc((sizeof(float) * (hb1->mesh->shape->size_v)));
-	float *vert2 = (float *)malloc((sizeof(float) * (hb2->mesh->shape->size_v)));
-
-	for (int i = 0; i < (hb1->mesh->shape->size_v); i += 2){
-		*(vert1 + i) = *((hb1->mesh->shape)->vertices + i);
-		*(vert1 + i + 1) = *((hb1->mesh->shape)->vertices + i + 1);
-	}
-	
-	for (int i = 0; i < (hb2->mesh->shape->size_v); i += 2){
-		*(vert2 + i) = *((hb2->mesh->shape)->vertices + i);
-		*(vert2 + i + 1) = *((hb2->mesh->shape)->vertices + i + 1);
-		//rotating vert2 into vert1 space
-		rotate2((vert2 + i), (vert2 + i + 1), delta_r);
-	}
-	
-	// TODO: Transform the vertices into 'hb1 space' relative to its rotation
-	// Determine if hitbox 2 has a vertex inside hitbox 1 using barycentric coordinates
-	
-	free(vert1);
-	free(vert2);
-}

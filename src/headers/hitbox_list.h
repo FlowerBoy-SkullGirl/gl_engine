@@ -4,7 +4,7 @@
 struct hitbox_list{
 	struct gl_hitbox *data;
 	struct hitbox_list *next;
-}
+};
 
 struct hitbox_list *create_hitbox_node();
 

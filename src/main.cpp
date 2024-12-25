@@ -10,6 +10,7 @@
 #include "headers/rgba.h"
 #include "headers/meshes.h"
 #include "headers/textures.h"
+#include "headers/vectors.h"
 #include "headers/objects.h"
 #include "headers/camera.h"
 #include "headers/object_list.h"
@@ -240,17 +241,17 @@ int main()
 
 		// Draw all background objects
 		for (int i = 0; access_go_list_index(bg_objects, i) != NULL; i++){
-			draw_game_object((access_list_index(bg_objects, i))->op, shader1);
+			draw_game_object((access_go_list_index(bg_objects, i))->op, shader1);
 		}
 
 		// Draw all middling objects
 		for (int i = 0; access_go_list_index(mid_objects, i) != NULL; i++){
-			draw_game_object((access_list_index(mid_objects, i))->op, shader1);
+			draw_game_object((access_go_list_index(mid_objects, i))->op, shader1);
 		}
 
 		// Draw all foreground objects
 		for (int i = 0; access_go_list_index(fg_objects, i) != NULL; i++){
-			draw_game_object((access_list_index(fg_objects, i))->op, shader1);
+			draw_game_object((access_go_list_index(fg_objects, i))->op, shader1);
 		}
 
 
