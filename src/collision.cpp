@@ -1,9 +1,14 @@
 #include "headers/vectors.h" // all our mathematical functions
+#include "headers/rgba.h"
+#include "headers/shapes.h"
+#include "headers/meshes.h"
 #include "headers/hitbox.h"
 #include "headers/hitbox_list.h"
 #include "headers/objects.h"
 #include "headers/object_list.h"
 #include <cmath>
+
+#define G_PI 3.1415
 
 #define DEFAULT_MESH_SIZE 2.0
 float g_mesh_max_size = sqrt(DEFAULT_MESH_SIZE);
@@ -24,7 +29,7 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 
 	// Check if the objects are near enough to collide
 	double longest_d = (max_dimension(hb1->scale_x, hb1->scale_y) * g_mesh_max_size) + (max_dimension(hb2->scale_x, hb2->scale_y) * g_mesh_max_size);
-	if (distance2(p1->pos_x, p1->pos_y, p2->pos_x, p2->pos_y) < longest_d)
+	if (distance2(p1.x, p1.y, p2.x, p2.y) < longest_d)
 		return 0;
 
 	// Find the difference between their rotation so that hb2 can be transformed into hb1 space
@@ -79,47 +84,15 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 			break;
 		}
 	}
-/*    ALTERNATIVE LOGIC IF HB1 is not converted to hb2 space
- * // Then check if any edge moves across -1 or 1 in both axes (collision true)
-	for (int i = 0; i < (hb2->mesh->shape->size_v); i += 2){
-		int x_cross = 0;
-		int y _cross = 0;
-		float x1 = 0.0f;
-		float x2 = 0.0f;
-		float y1 = 0.0f;
-		float y2 = 0.0f;
-		if (collision_detected)
-			break;
-		// if on last vertex
-		if (i + 2 == (hb2->mesh->shape->size_v){
-			x1 = min_dimension(*(vert2 + i), *vert2);
-			x2 = max_dimension(*(vert2 + i), *vert2);
-			y1 = min_dimension(*(vert2 + i + 1), *(vert2 + 1));
-			y2 = max_dimension(*(vert2 + i + 1), *(vert2 + 1));
-		}else{
-			x1 = min_dimension(*(vert2 + i), *(vert2 + i + 2));
-			x2 = max_dimension(*(vert2 + i), *(vert2 + i + 2));
-			y1 = min_dimension(*(vert2 + i + 1), *(vert2 + i + 3));
-			y2 = max_dimension(*(vert2 + i + 1), *(vert2 + i + 3));
-		}
-		if((x1 <= -1 && x2 >= -1) || (x1 <= 1 && x2 >= 1))
-			x_cross = 1;
-		if((y1 <= -1 && y2 >= -1) || (y1 <= 1 && y2 >= 1))
-			y_cross = 1;
-		if (x_cross && y_cross)
-			collision_detected = 1;
-	}
-*/
-	// Check if every edge moves across -1 and 1 (hb1 is inside hb2, collision true)
-	// // 0(0, 1), 1(2, 3), 2(4, 5), 3(6, 7)
-	// // Edges are 0-1, 1-2, 2-3, 3-0
-	// // If pattern (+, +), (+, -), (-, -), (-, +) with abs values all greater than 1, then collision
-	// // Essentially, look through vertex array for EXACTLY 4 pos or 4 neg contiguous values, allowing no other pos/neg
-	// // But only 1 pair can be all neg or all pos
-	// // Alternatively check if any 1 vertex from hb1 is inside hb2 by transforming the hb1 coordinates
-	
+
+	//Cleanup
 	free(vert1);
 	free(vert2);
+
+	if (collision_detected)
+		return 1;
+	else
+		return 0;
 }
 
 int check_collision_objects(struct game_object *ob1, struct game_object *ob2)
@@ -134,7 +107,7 @@ int check_collision_objects(struct game_object *ob1, struct game_object *ob2)
 
 	for (int i = 0; access_hb_list_index(ob1->hb_list, i) != NULL; i++){
 		for (int j = 0; access_hb_list_index(ob2->hb_list, j) != NULL; j++){
-			if (hitbox_collide(ob1, (ob1->hb_list)[i], ob2, (ob2->hb_list)[j])){
+			if (hitbox_collide(ob1, access_hb_list_index(ob1->hb_list, i)->data, ob2, access_hb_list_index(ob2->hb_list, j)->data)){
 				found_collision = 1;
 				box1 = i;
 				box2 = j;
@@ -149,7 +122,6 @@ int check_collision_objects(struct game_object *ob1, struct game_object *ob2)
 	if (!found_collision)
 		return 0;
 
-
+	//plan to return an angle instead
+	return 1;
 }
-
-

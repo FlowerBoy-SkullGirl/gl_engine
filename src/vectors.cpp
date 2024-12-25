@@ -101,7 +101,7 @@ double calc_momentum(struct velocity v, double m)
 // Find a change in velocity due to acceleration
 struct velocity find_vel_gravity(double mass1, double x1, double y1, double mass2, double x2, double y2, double d_time)
 {
-	double distance = calc_distance(x1, y1, x2, y2);
+	double distance = distance2(x1, y1, x2, y2);
 	double angle = calc_angle(x1, y1, x2, y2, distance);
 	double force = calc_force_gravity(mass1, mass2, distance);
 	double accel = calc_acceleration(force, mass1);
@@ -165,7 +165,7 @@ struct velocity find_v_after_collision(double mag_N, double r, struct velocity v
 	// Find the magnitude by inner product of component vectors
 	double mag_v = distance2(v.x, 0.0f, 0.0f, v.y);
 	
-	struct new_v;
+	struct velocity new_v;
 	new_v.x = cos(r) * mag_N * mag_v;
 	new_v.y = sin(r) * mag_N * mag_v;
 

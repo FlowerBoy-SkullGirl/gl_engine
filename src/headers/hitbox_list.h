@@ -6,7 +6,7 @@ struct hitbox_list{
 	struct hitbox_list *next;
 };
 
-struct hitbox_list *create_hitbox_node();
+struct hitbox_list *create_hitbox_list_node();
 
 struct hitbox_list *append_hitbox(struct hitbox_list *, struct gl_hitbox *);
 

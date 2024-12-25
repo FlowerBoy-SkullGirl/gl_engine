@@ -21,7 +21,7 @@ struct hitbox_list *append_hitbox(struct hitbox_list*lp, struct gl_hitbox *hp)
 		return lp;
 	}
 
-	if (lp->op != NULL){
+	if (lp->data != NULL){
 		lp->next = append_hitbox(lp->next, hp);
 		return lp;
 	}

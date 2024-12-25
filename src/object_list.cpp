@@ -2,9 +2,9 @@
 #include <stdlib.h>
 
 #include "headers/rgba.h"
+#include "headers/vectors.h"
 #include "headers/objects.h"
 #include "headers/object_list.h"
-#include "headers/vectors.h"
 
 struct object_list *create_object_list_node()
 {
@@ -53,5 +53,5 @@ struct object_list *access_go_list_index(struct object_list *np, int i)
 		return NULL;
 	if (i == 0)
 		return np;
-	return access_list_index(np->next, (i - 1));
+	return access_go_list_index(np->next, (i - 1));
 }

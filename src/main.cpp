@@ -11,9 +11,12 @@
 #include "headers/meshes.h"
 #include "headers/textures.h"
 #include "headers/vectors.h"
+#include "headers/hitbox.h"
+#include "headers/hitbox_list.h"
 #include "headers/objects.h"
 #include "headers/camera.h"
 #include "headers/object_list.h"
+#include "headers/collision.h"
 #include "headers/keybinds.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -111,6 +114,11 @@ int main()
 	bind_array(0);
 /* END LOAD SHAPES */
 
+/* LOAD MESH FOR HITBOXES */
+	struct gl_shape *square_hitbox_shape = load_mesh("meshes/square_hitbox.glMesh");
+	struct gl_mesh *square_hitbox_mesh = init_mesh(square_hitbox_shape);
+/* END LOAD MESH FOR HITBOXES */
+
 /* LOAD TEXTURES */
 
 	glEnable(GL_BLEND);
@@ -118,6 +126,12 @@ int main()
 	stbi_set_flip_vertically_on_load(true);
 	unsigned int cloud_tex = load_texture("textures/cloud.png");
 /* END LOAD TEXTURES */
+
+/* CREATE HITBOXES */
+	struct gl_hitbox *square_hitbox = create_hitbox(square_hitbox_mesh);
+	struct gl_hitbox *tall_square_hitbox = create_hitbox(square_hitbox_mesh);
+	tall_square_hitbox->scale_y = 4.0f;
+/* END CREATE HITBOXES */
 
 /* CREATE OBJECTS WITH BUFFERS */
 	struct object_list *bg_objects = create_object_list_node();
@@ -129,6 +143,7 @@ int main()
 	set_object_rotation(tall_square, (V_PI/6.0f));
 	set_object_pos(tall_square, 2.0f, -4.0f); 
 	set_object_scale(tall_square, 1.0f, 4.0f); 
+	add_object_hitbox(player_object, tall_square_hitbox);
 	append_object(mid_objects, tall_square);
 
 	struct game_object *spinning_square = init_game_object();
@@ -163,6 +178,8 @@ int main()
 	set_object_scale(player_object, 3.0f, 3.0f);
 	set_object_pos(player_object, 0.0f, 0.0f);
 	set_object_color(player_object, convert_to_rgba(0.0f, 0.0f, 1.0f, 0.8f));
+
+	add_object_hitbox(player_object, square_hitbox);
 	append_object(mid_objects, player_object);
 
 /* END CREATE OBJECTS */
@@ -253,6 +270,12 @@ int main()
 		for (int i = 0; access_go_list_index(fg_objects, i) != NULL; i++){
 			draw_game_object((access_go_list_index(fg_objects, i))->op, shader1);
 		}
+
+		// Determine collisions
+		if (check_collision_objects(player_object, tall_square))
+			set_object_color(player_object, convert_to_rgba(0.7f, 0.0f, 0.3f, 0.8f));
+		else
+			set_object_color(player_object, convert_to_rgba(0.0f, 0.0f, 1.0f, 0.8f));
 
 
 		glfwSwapBuffers(window);

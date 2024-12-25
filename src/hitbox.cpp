@@ -1,4 +1,5 @@
-#include "hitbox.h"
+#include "headers/hitbox.h"
+#include "stdlib.h"
 
 struct gl_hitbox *create_hitbox(struct gl_mesh *mp)
 {
