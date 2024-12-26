@@ -17,21 +17,21 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 {
 	int collision_detected = 0;
 	// Add the angles of the object and their relative hitbox and use unit circle ranges
-	double r1 = fmodl((ob1->rotation) + (hb1->offset_rot), G_PI * 2.0f);
+	double r1 = fmod((ob1->rotation) + (hb1->offset_rot), G_PI * 2.0f);
 	struct velocity p1;
 	p1.x = (ob1->pos_x) + (hb1->offset_x);
 	p1.y = (ob1->pos_y) + (hb1->offset_y);
 
-	double r2 = fmodl((ob2->rotation) + (hb2->offset_rot), G_PI * 2.0f);
+	double r2 = fmod((ob2->rotation) + (hb2->offset_rot), G_PI * 2.0f);
 	struct velocity p2;
 	p2.x = (ob2->pos_x) + (hb2->offset_x);
 	p2.y = (ob2->pos_y) + (hb2->offset_y);
 
-	// Check if the objects are near enough to collide
+/*	// Check if the objects are near enough to collide
 	double longest_d = (max_dimension(hb1->scale_x, hb1->scale_y) * g_mesh_max_size) + (max_dimension(hb2->scale_x, hb2->scale_y) * g_mesh_max_size);
 	if (distance2(p1.x, p1.y, p2.x, p2.y) < longest_d)
 		return 0;
-
+*/
 	// Find the difference between their rotation so that hb2 can be transformed into hb1 space
 	double delta_r = r2 - r1;
 	double delta_s_x = (hb2->scale_x) / (hb1->scale_x);
@@ -102,7 +102,7 @@ int check_collision_objects(struct game_object *ob1, struct game_object *ob2)
 	int box2 = 0;
 	// Check if the objects are near enough to collide
 	double longest_d = (max_dimension(ob1->scale_x, ob1->scale_y) * g_mesh_max_size) + (max_dimension(ob2->scale_x, ob2->scale_y) * g_mesh_max_size);
-	if (distance2(ob1->pos_x, ob1->pos_y, ob2->pos_x, ob2->pos_y) < longest_d)
+	if (distance2(ob1->pos_x, ob1->pos_y, ob2->pos_x, ob2->pos_y) > longest_d)
 		return 0;
 
 	for (int i = 0; access_hb_list_index(ob1->hb_list, i) != NULL; i++){

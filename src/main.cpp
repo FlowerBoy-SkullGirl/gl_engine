@@ -26,6 +26,12 @@
 
 #define WORLD_SCALE 0.025
 #define BASE_VEL 3.0
+//Allow debugging from attached GDB
+#include <sys/prctl.h>
+void allow_debug()
+{       
+	prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
+}
 
 // Externs
 extern struct rgba RGBA_BG_COLOR;
@@ -71,6 +77,7 @@ void processInput(GLFWwindow *window)
 
 int main()
 {
+	allow_debug();
 /* CREATE WINDOW SECTION START */
 	glfwInit();
 
@@ -143,7 +150,7 @@ int main()
 	set_object_rotation(tall_square, (V_PI/6.0f));
 	set_object_pos(tall_square, 2.0f, -4.0f); 
 	set_object_scale(tall_square, 1.0f, 4.0f); 
-	add_object_hitbox(player_object, tall_square_hitbox);
+	add_object_hitbox(tall_square, tall_square_hitbox);
 	append_object(mid_objects, tall_square);
 
 	struct game_object *spinning_square = init_game_object();

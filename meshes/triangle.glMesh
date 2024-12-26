@@ -1,6 +1,6 @@
 // Local coords  // Texture coords
-0.0f, 1.0f,         0.5f, 1.0f,    //top
-0.5f, 0.0f,         1.0f, 0.0f,    //right
--0.5f, 0.0f,        0.0f, 0.0f     //left
+0.0f, 0.5f,         0.5f, 1.0f,    //top
+0.5f, -0.5f,         1.0f, 0.0f,    //right
+-0.5f, -0.5f,        0.0f, 0.0f     //left
 ; //Semi-colon indicates that next array is indices
 0, 1, 2
