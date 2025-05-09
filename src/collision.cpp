@@ -36,8 +36,10 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 	double delta_r = r2 - r1;
 	double delta_s_x = (hb2->scale_x) / (hb1->scale_x);
 	double delta_s_y = (hb2->scale_y) / (hb1->scale_y);
-	double delta_pos_x = (p2.x) - (p1.x);
-	double delta_pos_y = (p2.y) - (p1.y);
+	float delta_pos_x = (p2.x) - (p1.x);
+	float delta_pos_y = (p2.y) - (p1.y);
+	scale2(&delta_pos_x, &delta_pos_y, delta_s_x, delta_s_y);
+	rotate2(&delta_pos_x, &delta_pos_y, delta_r);
 	// Apply the necessary transformations to the vertices to determine their edges
 	float *vert1 = (float *)malloc((sizeof(float) * (hb1->mesh->shape->size_v)));
 	float *vert2 = (float *)malloc((sizeof(float) * (hb2->mesh->shape->size_v)));
@@ -63,12 +65,21 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 		}
 	}
 
+	//If detected, return early
+	if (collision_detected){
+		free(vert1);
+		free(vert2);
+		return 1;
+	}
+
 	//Transform hb1 into hb2 space to check if its vertices lie inside hb2
 	delta_r = r1 - r2;
 	delta_s_x = (hb1->scale_x) / (hb2->scale_x);
 	delta_s_y = (hb1->scale_y) / (hb2->scale_y);
 	delta_pos_x = (p1.x) - (p2.x);
 	delta_pos_y = (p1.y) - (p2.y);
+	scale2(&delta_pos_x, &delta_pos_y, delta_s_x, delta_s_y);
+	rotate2(&delta_pos_x, &delta_pos_y, delta_r);
 
 	for (int i = 0; i < (hb1->mesh->shape->size_v); i += 2){
 		*(vert1 + i) = *((hb1->mesh->shape)->vertices + i);
@@ -78,8 +89,8 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 		translate2((vert1 + i), (vert1 + i + 1), delta_pos_x, delta_pos_y);
 	}
 
-	for (int i = 0; i < (hb2->mesh->shape->size_v); i += 2){
-		if( fabs(*(vert2 + i)) <= 1 && fabs(*(vert2 + i + 1)) <= 1){
+	for (int i = 0; i < (hb1->mesh->shape->size_v); i += 2){
+		if( fabs(*(vert1 + i)) <= 1 && fabs(*(vert1 + i + 1)) <= 1){
 			collision_detected = 1;
 			break;
 		}
