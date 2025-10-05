@@ -1,12 +1,9 @@
 #ifndef KEYBINDS_H
 #define KEYBINDS_H
 
-void set_key_up(int);
+#define MAX_SCANCODES 1024
 
-void set_key_down(int);
-
-void set_key_left(int);
-
-void set_key_right(int);
+int register_key_action_pair(int, void(*)(void));
+void process_keybinds();
 
 #endif

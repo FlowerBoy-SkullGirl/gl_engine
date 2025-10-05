@@ -1,26 +1,31 @@
 #include "headers/keybinds.h"
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
-int keybind_up;
-int keybind_down;
-int keybind_left;
-int keybind_right;
+void (*keybind_actions[MAX_SCANCODES])(void);
+int keybind_list[MAX_SCANCODES] = {0};
 
-void set_key_up(int k)
+//Shared with main
+extern GLFWwindow* main_game_window;
+
+int register_key_action_pair(int keycode, void(*action_func)(void))
 {
-	keybind_up = k;
+	keybind_actions[keycode] = action_func;
+	for (int i = 0; i < MAX_SCANCODES; i++){
+		if(keybind_list[i] == 0){
+			keybind_list[i] = keycode;
+			return 0;
+		}
+	}
+	return 1;
 }
 
-void set_key_down(int k)
+void process_keybinds()
 {
-	keybind_down = k;
-}
-
-void set_key_left(int k)
-{
-	keybind_left = k;
-}
-
-void set_key_right(int k)
-{
-	keybind_right = k;
+	for (int i = 0; i < MAX_SCANCODES; i++){
+		if(keybind_list[i] == 0)
+			return;
+		if (glfwGetKey(main_game_window, keybind_list[i]) == GLFW_PRESS)
+			keybind_actions[keybind_list[i]]();
+	}
 }

@@ -38,10 +38,8 @@ extern struct rgba RGBA_BG_COLOR;
 extern float g_world_scale;
 extern float g_cam_x;
 extern float g_cam_y;
-extern int keybind_up;
-extern int keybind_down;
-extern int keybind_left;
-extern int keybind_right;
+extern void (*keybind_actions[MAX_SCANCODES])(void);
+extern int keybind_list[MAX_SCANCODES];
 
 // Local globals
 float g_time;
@@ -49,30 +47,43 @@ float g_delta_t;
 
 struct game_object *player_object;
 
+GLFWwindow* main_game_window;
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 
 void processInput(GLFWwindow *window)
 {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-    if(glfwGetKey(window, keybind_up) == GLFW_PRESS){
+    process_keybinds();
+}
+
+void exit_window()
+{
+        glfwSetWindowShouldClose(main_game_window, true);
+}
+
+void player_up()
+{
 	set_object_pos(player_object, player_object->pos_x, player_object->pos_y + (BASE_VEL * g_delta_t));
 	set_object_rotation(player_object, 0.0f);
-    }
-    if(glfwGetKey(window, keybind_down) == GLFW_PRESS){
+}
+
+void player_down()
+{
 	set_object_pos(player_object, player_object->pos_x, player_object->pos_y - (BASE_VEL * g_delta_t));
 	set_object_rotation(player_object, V_PI);
-    }
-    if(glfwGetKey(window, keybind_left) == GLFW_PRESS){
+}
+
+void player_left()
+{
 	set_object_pos(player_object, player_object->pos_x - (BASE_VEL * g_delta_t), player_object->pos_y);
 	set_object_rotation(player_object, (3.0f * V_PI/2.0f));
-    }
-    if(glfwGetKey(window, keybind_right) == GLFW_PRESS){
+}
+
+void player_right()
+{
 	set_object_pos(player_object, player_object->pos_x + (BASE_VEL * g_delta_t), player_object->pos_y);
 	set_object_rotation(player_object, (V_PI/2.0f));
-    }
-	  
 }
 
 int main()
@@ -92,6 +103,8 @@ int main()
 		glfwTerminate();
 		return -1;
 	}
+
+	main_game_window = window;
 
 	glfwMakeContextCurrent(window);
 
@@ -220,10 +233,11 @@ int main()
 	set_world_scale(WORLD_SCALE);
 	set_cam_pos(0.0f, 0.0f);
 
-	set_key_up(GLFW_KEY_F);
-	set_key_down(GLFW_KEY_S);
-	set_key_left(GLFW_KEY_R);
-	set_key_right(GLFW_KEY_T);
+	register_key_action_pair(GLFW_KEY_F, &player_up);
+	register_key_action_pair(GLFW_KEY_S, &player_down);
+	register_key_action_pair(GLFW_KEY_R, &player_left);
+	register_key_action_pair(GLFW_KEY_T, &player_right);
+	register_key_action_pair(GLFW_KEY_ESCAPE, &exit_window);
 
 /* MAIN LOOP START */
 	while(!glfwWindowShouldClose(window))
