@@ -1,6 +1,8 @@
 #include <iostream>
 
-#include <GL/glew.h>
+//#include <GL/glew.h>
+//#define GLAD_GL_IMPLEMENTATION
+#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
 #include "headers/shapes.h"
@@ -86,18 +88,28 @@ void player_right()
 	set_object_rotation(player_object, (V_PI/2.0f));
 }
 
+void glfw_error_callback(int error, const char* description)
+{
+	std::cout << description << std::endl;
+}
+
 int main()
 {
 	allow_debug();
 /* CREATE WINDOW SECTION START */
-	glfwInit();
+	if(!glfwInit())
+	{
+		std::cout << "Failed glfw init" << std::endl;
+	}
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+	glfwSetErrorCallback(glfw_error_callback);
+
 	GLFWwindow* window = glfwCreateWindow(800, 600, "Square", NULL, NULL);
-	if (window == NULL)
+	if (!window)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
@@ -108,12 +120,15 @@ int main()
 
 	glfwMakeContextCurrent(window);
 
-	glewExperimental = GL_TRUE;
-	if (glewInit() != GLEW_OK)
+	//glewExperimental = GL_TRUE;
+	//GLenum glewres;
+	/*if (glewres = glewInit() != GLEW_OK)
 	{
-		std::cout << "Failed glew" << std::endl;
+		std::cout << "Failed glew" << glewGetErrorString(glewres) << std::endl;
 		return -2;
 	}
+	*/
+	gladLoadGL(glfwGetProcAddress);
 
 	glViewport(0, 0, 800, 600);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);

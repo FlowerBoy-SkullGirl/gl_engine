@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdlib.h>
-#include <GL/glew.h>
+//#include <GL/glew.h>
+#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
 #include "headers/buffers.h"
