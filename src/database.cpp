@@ -51,14 +51,68 @@ struct gl_db open_database(const char *filen)
 void gl_db close_database(struct gl_db db)
 {
 	FILE *fp = db.db_file;
-	fclose(fp
+	// If the file is already closed, return
+	if (fp == NULL)
+		return;
+	fclose(fp);
+	return;
 }
 
 // Delete a database
-void gl_db delete_database(struct gl_db);
+// Wrapper function for remove()
+int delete_database(const char* filen)
+{
+	return remove(filen);
+}
 
-// Get number of tables from a database
-int get_table_count(struct gl_db);
+// Get number of tables from a database, returns 0 if database is not open
+int get_table_count(struct gl_db db)
+{
+	int table_count = 0;
+	char c;
+	char *buffer;
+	// Return early if database is not open
+	if(db.db_file == NULL)
+		return 0;
+
+	// Determine the maximum number of digits to be read
+	/* There will always be at least 1 digit needed to read a value
+	 * of 0. Each time the maximum value can be divided by 10,
+	 * add an additional digit 
+	 */
+	int digits = 1;
+	int max = DB_MAX_TABLES;
+	for(; max > 0; digits++){
+		max /= 10;
+	}
+	// Allocate a buffer that can hold the maximum number of plain text digits required
+	// Sizeof(char) should be 1, but is added in case this is different
+	buffer = (char *) malloc((sizeof(char))*digits);
+
+	// Return 0 if buffer cannot be allocated
+	if (buffer == NULL)
+		return 0;
+
+	// Place file pointer at beginning of database file, where table count is guaranteed to be
+	fseek(db.db_file, 0, SEEK_SET);
+
+	int buffer_offset = 0;
+	while((c = fgetc(db.db_file)) != EOF){
+		// If we are reading further than the size of our buffer, return 0
+		if (buffer_offset > (sizeof(char))*digits)
+			return 0;
+		// If the beginning of a table is encountered, break from loop
+		if (c == DB_TABLE_START)
+			break;
+		// All characters preceding the first table should be the integer table count
+		*(buffer + buffer_offset) = c;
+		buffer_offset++;
+	}
+	// Use sscanf to parse an integer from the buffer, then return it
+	sscanf(buffer, "%d", &table_count);
+	return table_count;
+}
+
 
 /*
  *Table management

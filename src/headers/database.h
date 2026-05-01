@@ -22,6 +22,18 @@
  *      {row: id_val, col2_val, col3_val}
  *  }
  */
+
+// Max size allowed for different elements
+#define DB_MAX_TABLES 16
+#define DB_MAX_ROWS 256
+#define DB_MAX_COLS 256
+// Delimiters and boundary markers
+#define DB_TABLE_START '{'
+#define DB_TABLE_END '}'
+#define DB_ROW_START '{'
+#define DB_ROW_END '}'
+#define DB_DELIMITER ','
+
 struct gl_db{
 	FILE *db_file;
 };
@@ -51,7 +63,7 @@ struct gl_db open_database(const char*);
 void gl_db close_database(struct gl_db);
 
 // Delete a database
-void gl_db delete_database(struct gl_db);
+int delete_database(const char *);
 
 // Get number of tables from a database
 int get_table_count(struct gl_db);
@@ -127,5 +139,9 @@ float get_float_from_database(int, const char *, int, struct gl_db);
 
 // Query a string value by row index and column name, table id, and database
 const char *get_string_from_database(int, const char *, int, struct gl_db);
+
+/*
+ *Helper functions
+ */
 
 #endif

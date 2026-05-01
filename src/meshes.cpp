@@ -58,6 +58,9 @@ struct gl_shape *load_mesh(const char *filen)
 	encountered_semi = 0;
 	
 	char *buffer = (char *)malloc(MAX_DIGIT_MESH);
+	// Return null if unable to allocate memory
+	if (buffer == NULL)
+		return NULL;
 	int size_buf = 0;
 	int i = 0;
 	int j = 0;
@@ -111,7 +114,11 @@ struct gl_shape *load_mesh(const char *filen)
 	// The last index should have no comma and not yet been recorded
 	sscanf(buffer, "%d", ((mesh->indices) + j));
 
+	// Buffer will always be non-null at this point of execution
 	free(buffer);
+
+	// fp will always be non-null at this point of execution
+	fclose(fp);
 
 	return mesh;
 }
