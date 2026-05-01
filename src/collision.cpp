@@ -41,6 +41,7 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 	scale2(&delta_pos_x, &delta_pos_y, delta_s_x, delta_s_y);
 	rotate2(&delta_pos_x, &delta_pos_y, delta_r);
 	// Apply the necessary transformations to the vertices to determine their edges
+	// TODO: Statically allocate this memory so that we do not call malloc on every collision check
 	float *vert1 = (float *)malloc((sizeof(float) * (hb1->mesh->shape->size_v)));
 	float *vert2 = (float *)malloc((sizeof(float) * (hb2->mesh->shape->size_v)));
 
