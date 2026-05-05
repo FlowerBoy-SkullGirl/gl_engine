@@ -3,9 +3,10 @@
 
 /*
  *  Structure of the database:
- *  The first value in the database is a count of tables, every preceding value is a table
- *  Each table has by default a name, an integer id, a column count, a list of column names,
- *    a list of column data types, and a row count
+ *  The first value in the database is a count of tables, the second value is a count of assigned table id's, 
+ *  every preceding value is a table
+ *  Each table has by default an integer id, a row id count, a row count, a column count, 
+ *    a name, a list of column names, and a list of column data types
  *  Tables are enclosed in braces {}
  *  Tables are separated by commas ,
  *  A row is occupied by 1 or more columns, the first column being an integer id, which is a key value
@@ -27,6 +28,18 @@
 #define DB_MAX_TABLES 16
 #define DB_MAX_ROWS 256
 #define DB_MAX_COLS 256
+#define DB_MAX_SIZE_STRING 256
+/*
+ * A table is constrained to size (256 ^ 3)(max string, in max rows, in max columns)
+ *                              + 2 (table braces) + 512(row braces) 
+ *                              + (256 * 255) + 255 + 5(maximum number of commas)
+ * which is 2 ^ 24 characters + 514 + ~(2^16), which is a size that can be stored in any data type which can represent 25 bits
+ * Multiplied by 16 (2^4), at least 29 bits are needed to store the size of a file with 16 tables
+ * Stdlib functions typically use a long value as an offset count from the beginning of a file, so
+ * alternative functions like fseeko should be used where possible to avoid overflow,
+ * since long is signed and is only guaranteed to hold 32 bit values
+ */
+
 // Delimiters and boundary markers
 #define DB_TABLE_START '{'
 #define DB_TABLE_END '}'
