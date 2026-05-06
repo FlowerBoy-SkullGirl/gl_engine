@@ -10,6 +10,7 @@
 
 #define MAX_DIGIT_MESH 256
 #define SHADER_LAYOUTS 2
+#define SIZE_VECTOR 2
 
 struct gl_shape *load_mesh(const char *filen)
 {
@@ -161,9 +162,12 @@ int build_buffers(struct gl_mesh *mp)
 	set_buffer(mp->EBO, index_buf, GL_DYNAMIC_DRAW);
 
 	// Set the array attributes for the vertex shader
+	// The first argument is the index of the layout, so it is incremented for each call
+	// The last argument is an offset, so it is set to 0 for the first layout and set to the
+	// Size of the first layout vector for the second layout
 	int num_layouts = SHADER_LAYOUTS;
-	set_array_attributes(0, 2, GL_FLOAT, sizeof(float), num_layouts, 0);
-	set_array_attributes(1, 2, GL_FLOAT, sizeof(float), num_layouts, 2);
+	set_array_attributes(0, SIZE_VECTOR, GL_FLOAT, sizeof(float), num_layouts, 0);
+	set_array_attributes(1, SIZE_VECTOR, GL_FLOAT, sizeof(float), num_layouts, SIZE_VECTOR);
 
 	bind_array(0);
 	return 0;

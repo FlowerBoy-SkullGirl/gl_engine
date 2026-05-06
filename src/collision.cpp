@@ -27,11 +27,6 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 	p2.x = (ob2->pos_x) + (hb2->offset_x);
 	p2.y = (ob2->pos_y) + (hb2->offset_y);
 
-/*	// Check if the objects are near enough to collide
-	double longest_d = (max_dimension(hb1->scale_x, hb1->scale_y) * g_mesh_max_size) + (max_dimension(hb2->scale_x, hb2->scale_y) * g_mesh_max_size);
-	if (distance2(p1.x, p1.y, p2.x, p2.y) < longest_d)
-		return 0;
-*/
 	// Find the difference between their rotation so that hb2 can be transformed into hb1 space
 	double delta_r = r2 - r1;
 	double delta_s_x = (hb2->scale_x) / (hb1->scale_x);
