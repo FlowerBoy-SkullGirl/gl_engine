@@ -1,6 +1,8 @@
 #ifndef VECTORS_H
 #define VECTORS_H
 
+// A two dimensional vector that represents the magnitude of velocity 
+// The x and y dimensions
 struct velocity{
 	double x;
 	double y;

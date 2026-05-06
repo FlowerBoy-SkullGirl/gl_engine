@@ -1,11 +1,13 @@
 #ifndef OBJECT_LIST_H
 #define OBJECT_LIST_H
 
+// A singly linked list containing a game_object
 struct object_list{
 	struct game_object *op;
 	struct object_list *next;
 };
 
+// Functions used to create, add, destroy, or access linked list nodes
 struct object_list *create_object_list_node();
 
 struct object_list *append_object(struct object_list *, struct game_object *);

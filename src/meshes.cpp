@@ -12,6 +12,15 @@
 #define SHADER_LAYOUTS 2
 #define SIZE_VECTOR 2
 
+// Take a filename and load vertex data from it
+/* glMesh files are formatted so that
+ * forward slashes represent commented lines
+ * \n newlines end comments
+ * commas separate values
+ * float values represent vertices
+ * int values represent indices
+ * semi-colons separate lists of vertices and indices
+ */
 struct gl_shape *load_mesh(const char *filen)
 {
 	FILE *fp = fopen(filen, "r");
@@ -125,6 +134,7 @@ struct gl_shape *load_mesh(const char *filen)
 	return mesh;
 }
 
+// Takes a pointer to a valid gl_shape and allocates memory for a mesh that uses that shape
 struct gl_mesh *init_mesh(struct gl_shape *sp)
 {
 	struct gl_mesh *mp = (struct gl_mesh *)malloc(sizeof(struct gl_mesh));
@@ -137,6 +147,7 @@ struct gl_mesh *init_mesh(struct gl_shape *sp)
 	return mp;
 }
 
+// Abstracts the creation of OpenGL buffer objects for a given mesh
 int build_buffers(struct gl_mesh *mp)
 {
 	if (mp == NULL)
@@ -174,6 +185,7 @@ int build_buffers(struct gl_mesh *mp)
 
 }
 
+// Performs cleanup and frees the memory of buffers, shapes, and the mesh itself
 void destroy_mesh(struct gl_mesh *mp)
 {
 	if (mp == NULL)

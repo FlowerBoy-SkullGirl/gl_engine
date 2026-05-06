@@ -17,6 +17,7 @@
 
 #define DEFAULT_R_MOMENTUM 0.7
 
+// Allocates memory for a game_object with malloc, must be freed with free_game_object()
 struct game_object *init_game_object()
 {
 	struct game_object *op = (struct game_object *)malloc(sizeof(struct game_object));
@@ -45,7 +46,8 @@ struct game_object *init_game_object()
 	return op;
 }
 
-// Does not free mesh object
+// Frees memory allocated by init_game_object()
+// Does not free mesh object, since a mesh can be used for many object's
 void free_game_object(struct game_object *op)
 {
 	if (op == NULL)
@@ -131,6 +133,7 @@ int add_object_hitbox(struct game_object *op, struct gl_hitbox *hb)
 	return 0;
 }
 
+// Draws the game object by passing uniforms to the shaders and calling the glDrawElements function
 void draw_game_object(struct game_object *op, unsigned int shader)
 {
 	// Set the uniforms

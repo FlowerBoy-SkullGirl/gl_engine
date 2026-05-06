@@ -1,6 +1,10 @@
 #ifndef UNIFORMS_H
 #define UNIFORMS_H
 
+/* This library is used to pass values from the main program
+ * to the GPU shader programs through values called 'uniforms'
+ */
+
 // Value, program, name
 void set_uniforms1(float, unsigned int, const char *);
 

@@ -5,7 +5,7 @@
 
 #include "headers/shaders.h"
 
-// C ++ complains of literal expansion to char *, so we use const
+// C++ complains of literal expansion to char *, so we use const
 unsigned int compile_shader(const char *shader_file, GLenum type)
 {
 	if (shader_file == NULL)
@@ -17,10 +17,12 @@ unsigned int compile_shader(const char *shader_file, GLenum type)
 	if (fp == NULL)
 		return -1;
 
+	// Determine the size of the shader file
 	fseek(fp, 0, SEEK_END);
 	long fsize = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
+	// Allocate memory to read the file into a char * array
 	char *shader_str = (char *) malloc(fsize);
 	if (shader_str == NULL)
 		return -1;
@@ -30,11 +32,14 @@ unsigned int compile_shader(const char *shader_file, GLenum type)
 
 	fclose(fp);
 
+	// Compile the shader that was read into a string
 	glShaderSource(shader, 1, &shader_str, NULL);
 	glCompileShader(shader);
 
+	// Free the memory storing the char * array of the file's contents
 	free(shader_str);
 
+	// Report any errors
 	int success;
 	char infoLog[512];
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
@@ -48,7 +53,8 @@ unsigned int compile_shader(const char *shader_file, GLenum type)
 	return shader;
 }
 
-
+// Wraps the openGL call to link a shader program, but takes care of the work
+// of creating the program and attaching the predefined shader to it first
 unsigned int link_shaders(unsigned int *shaders, int size)
 {
 	unsigned int program = glCreateProgram();
@@ -73,7 +79,7 @@ unsigned int link_shaders(unsigned int *shaders, int size)
 	return program;
 }
 
-
+//Wraps OpenGL's glUseProgram function
 void use_shader(unsigned int shader_program)
 {
 	glUseProgram(shader_program);
