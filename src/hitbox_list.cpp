@@ -5,6 +5,7 @@
 #include "headers/hitbox.h"
 #include "headers/hitbox_list.h"
 
+// Allocates memory for a node in the singly linked list
 struct hitbox_list *create_hitbox_list_node()
 {
 	struct hitbox_list *np = (struct hitbox_list *)malloc(sizeof(struct hitbox_list));
@@ -30,6 +31,7 @@ struct hitbox_list *append_hitbox(struct hitbox_list*lp, struct gl_hitbox *hp)
 	return lp;
 }
 
+// Frees memory from a node in the singly linked list
 struct hitbox_list *destroy_hitbox_list(struct hitbox_list *np)
 {
 	if (np == NULL)
@@ -46,6 +48,7 @@ struct hitbox_list *destroy_hitbox_list(struct hitbox_list *np)
 	return NULL;
 }
 
+// Iterates through a list, starting at np until the index is 0
 struct hitbox_list *access_hb_list_index(struct hitbox_list *np, int i)
 {
 	if (np == NULL)

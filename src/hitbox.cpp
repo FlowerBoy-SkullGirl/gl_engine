@@ -1,6 +1,7 @@
 #include "headers/hitbox.h"
 #include "stdlib.h"
 
+// Allocates memory for a hitbox, which must be freed with destroy_hitbox()
 struct gl_hitbox *create_hitbox(struct gl_mesh *mp)
 {
 	if (mp == NULL)
@@ -19,6 +20,7 @@ struct gl_hitbox *create_hitbox(struct gl_mesh *mp)
 	return hb; 
 }
 
+// Frees memory from a hitbox, which was allocated with create_hitbox()
 void destroy_hitbox(struct gl_hitbox *hb)
 {
 	if (hb == NULL)
