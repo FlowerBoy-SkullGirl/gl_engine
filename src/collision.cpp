@@ -13,6 +13,7 @@
 #define DEFAULT_MESH_SIZE 2.0
 float g_mesh_max_size = sqrt(DEFAULT_MESH_SIZE);
 
+// Transforms the coordinate space of one object into the other so it may be determined if one has a vertex within the other
 int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_object *ob2, struct gl_hitbox *hb2)
 {
 	int collision_detected = 0;
@@ -102,6 +103,8 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 		return 0;
 }
 
+// Checks if objects are neart to each other, calls hitbox_collide()
+// and reporst the results to the calling function
 int check_collision_objects(struct game_object *ob1, struct game_object *ob2)
 {
 	int found_collision = 0;
@@ -129,6 +132,6 @@ int check_collision_objects(struct game_object *ob1, struct game_object *ob2)
 	if (!found_collision)
 		return 0;
 
-	//plan to return an angle instead
+	//TODO: return an angle instead
 	return 1;
 }
