@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>gl_engine Documentation</title>
+		<link rel="stylesheet" href="styles.css">
+		<link rel="icon" type="image/x-icon" href="img/flower.ico">
+	</head>
+
+	<body>
+		<!-- Head -->
+		<div class="row">
+			<div class="column farleft">
+			</div>
+			<div class="column left">
+			</div>
+			<div class="column center">
+			</div>
+			<div class="column right">
+			</div>
+			<div class="column farright">
+			</div>
+		</div>
+	
+		<!-- Columns -->
+		<div class="row">
+			<div class="column farleft">
+			</div>
+			<div class="column left bordered light_background">
+				<h5><a href="index.html">Summary</a></h5>
+				<h5><a href="meshes.html">Meshes</a></h5>
+				<h5><a href="shaders.html">Shaders</a></h5>
+				<h5><a href="textures.html">Textures</a></h5>
+			</div>
+			<div class="column center bordered sharp_background">
+				<h1>Meshes</h1>
+				<h4>The coordinates that make up an object's shape. These are a list of float values that make up an object's vertices.<h4>
+				<h1>Relevant files</h1>
+				<h4>src/headers/meshes.h</h4>
+				<h4>src/meshes.cpp</h4>
+				<h4>meshes/*.glMesh</h4>
+				<h1>glMesh file structure</h1>
+				<h4>A glMesh file defines the vertices of the object in local space, normalized between -1.0 and 1.0, the coordinates that a texture should overlay an object, normalized between 0.0 and 1.0, and the indices that determine the order in which the vertices should be drawn to compose triangles.</h4>
+				<h4>The file can include comments that follow any number of forward slashes, like so "//Comment." Float values that are comma-separated for local space and texture coordinates, and integer values are comma separated for the vertex indices. A semi-colon ';' is used as the delimiter to indicate the beginning of the vertex index list. Vertex coordinates are given in pairs of 2 floats, followed by the matchingpair of texture coordinates. White space is ignored, but a newline indicates that a comment has ended and data should be parsed.</h4>
+				<h4>A shape and a mesh only need one instance to be used by any number of objects, as the values inside are not changed after initialization.</h4>
+				<h1>The gl_mesh struct</h1>
+				<h4>gl_mesh holds all of the variables necessary to utilize the mesh.
+				<ul>
+					<li>struct gl_shape *shape - A struct that holds information about the shape vertices.</li>
+					<li>struct buffer_t *VBO - The vertex buffer object used to pass the vertex data to the GPU by OpenGL.</li>
+					<li>struct buffer_t *EBO - The element buffer object used to pass the vertex indices to the GPU by OpenGL so that the vertices are rendered in the correct order without having to specify them for each draw.</li>
+					<li>unsigned int VAO - The vertex array object that 'binds' the buffers listed above so that they may be easily referenced together later.</li>
+					<li>int num_indices - An integer value that stores the number of vertex-pair indices required to represent the shape in triangles.</li>
+				</ul>
+				</h4>
+				<h1>Mesh functions</h1>
+				<h4>The following functions are those that make use of the meshes object within the program.</h4>
+				<h4>struct gl_shape *load_mesh(const char *filen)
+					<ul>
+						<li>Takes a filename to a .glMesh file as an argument and parses the vertex data into a shape. It allocates memory for a shape and returns a pointer to that memory. Upon failure, it returns a null pointer.</li>
+					</ul>
+				</h4>
+				<h4>struct gl_mesh *init_mesh(struct gl_shape *sp)
+					<ul>
+						<li>Takes a pointer to a gl_shape as an argument and allocates memory for a mesh that will contain a pointer to that shape. Null pointers are assigned to the mesh's buffers. If malloc fails, the function will return a null pointer.</li>
+					</ul>
+				</h4>
+				<h4>int gl_mesh *build_buffers(struct gl_mesh *mp)
+					<ul>
+						<li>Takes a pointer to a gl_mesh struct as an argument and uses the member variables to build the OpenGL buffers using the project's buffers library, which essentially wraps OpenGL calls. Returns 0 on success and non-zero values on failure.</li>
+					</ul>
+				</h4>
+				</h4>
+				<h4>void destroy_mesh(struct gl_mesh *mp)
+					<ul>
+						<li>Takes a pointer to a gl_mesh struct and begins a cleanup procedure. If the members of the struct have allocated memory, their relevant destructors are called first. Finally, the memory for the struct is freed.</li>
+					</ul>
+			</div>
+
+			<!-- Nav Column -->
+		<div class="column right">
+		</div>
+			
+
+		<div class="column farright">
+		</div>
+		</div>
+		</body>
+	
+		<!-- Footer -->
+		<!-- Image bar-->
+		<footer>
+			<div class ="column farleft"></div>
+			<div class ="column left"></div>
+			<div class ="column center">
+				<h4>Project by Damean Murphy-Short</h4>
+			</div>
+			
+		</footer>
+</html>

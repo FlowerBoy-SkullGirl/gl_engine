@@ -27,10 +27,63 @@
 			<div class="column farleft">
 			</div>
 			<div class="column left bordered light_background">
-				<h5><a href="index.html">Summary</a><h5>
+				<h5><a href="index.html">Summary</a></h5>
+				<h5><a href="meshes.html">Meshes</a></h5>
+				<h5><a href="shaders.html">Shaders</a></h5>
+				<h5><a href="textures.html">Textures</a></h5>
 			</div>
 			<div class="column center bordered sharp_background">
-				<h4>This is where all the documentation for the project will go.<h4>
+				<h4>gl_engine is a 2D game engine written in C and C++ that allows for basic shapes to be drawn from meshes, have textures applied to them, and accepts programmer-defined actions for different keybindings.</h4>
+				<h1>File system structure</h1>
+				<h4>Project Root /</h4>
+				<h4><ul>
+						<li>Makefile - instructions for GNU Make to build the project.</li>
+				</ul></h4>
+				<h4>Binaries /bin</h4>
+				<h4>
+					<ul>
+						<li>Stores the executable files built with the Makefile in the project root directory</li>
+						<li>square - the executable built from src/main.cpp that incorporates every element of the project.</li>
+				</ul></h4>
+				<h4>Documentation /docs</h4>
+				<h4>
+					<ul>
+						<li>Stores the documentation for the project, including this file.</li>
+						<li>index.html - the entry point for the documentation.</li>
+				</ul></h4>
+				<h4>Mesh files /meshes</h4>
+				<h4>
+					<ul>
+						<li>Example <a href="meshes.html">meshes</a> provided for use in the program. A mesh holds coordinate information for drawing shapes.</li>
+				</ul></h4>
+				<h4>Object files /objects</h4>
+				<h4>
+					<ul>
+						<li>A directory for a planned feature that would enable objects to be built from specifications listed in a file.</li>
+				</ul></h4>
+				<h4>Shaders /shader</h4>
+				<h4>
+					<ul>
+						<li>The OpenGL <a href="shaders.html">shaders</a> written in glsl that are compiled at runtime.</li>
+						<li>vertex.glsl - Describes and performs transformations of object vertices from local coordinates to world coordinates and world coordinates to screen coordinates.</li>
+						<li>fragment.glsl - A very simple fragment shader that applies the requested textures for an object and the requested colors for a given object.</li>
+				</ul></h4>
+				<h4>Source files /src</h4>
+				<h4>
+					<ul>
+						<li>The location of all .c and .cpp files used to build the program.</li>
+				</ul></h4>
+				<h4>Header files /src/headers</h4>
+				<h4>
+					<ul>
+						<li>Accompanying header files for the files found in /src.</li>
+				</ul></h4>
+				<h4>Textures /textures</h4>
+				<h4>
+					<ul>
+						<li>Image files that are used to apply <a href="textures.html">textures</a> to objects. These are png files that are parsed by stbi and used by the main function through the project's textures library.</li>
+				</ul></h4>
+				
 			</div>
 
 			<!-- Nav Column -->

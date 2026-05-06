@@ -9,6 +9,7 @@
 #include "headers/shapes.h"
 
 #define MAX_DIGIT_MESH 256
+#define SHADER_LAYOUTS 2
 
 struct gl_shape *load_mesh(const char *filen)
 {
@@ -160,7 +161,7 @@ int build_buffers(struct gl_mesh *mp)
 	set_buffer(mp->EBO, index_buf, GL_DYNAMIC_DRAW);
 
 	// Set the array attributes for the vertex shader
-	int num_layouts = 2;
+	int num_layouts = SHADER_LAYOUTS;
 	set_array_attributes(0, 2, GL_FLOAT, sizeof(float), num_layouts, 0);
 	set_array_attributes(1, 2, GL_FLOAT, sizeof(float), num_layouts, 2);
 
