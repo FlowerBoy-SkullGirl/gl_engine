@@ -177,8 +177,9 @@ int build_buffers(struct gl_mesh *mp)
 	// The last argument is an offset, so it is set to 0 for the first layout and set to the
 	// Size of the first layout vector for the second layout
 	int num_layouts = SHADER_LAYOUTS;
+	int offset = SIZE_VECTOR;
 	set_array_attributes(0, SIZE_VECTOR, GL_FLOAT, sizeof(float), num_layouts, 0);
-	set_array_attributes(1, SIZE_VECTOR, GL_FLOAT, sizeof(float), num_layouts, SIZE_VECTOR);
+	set_array_attributes(1, SIZE_VECTOR, GL_FLOAT, sizeof(float), num_layouts, offset);
 
 	bind_array(0);
 	return 0;

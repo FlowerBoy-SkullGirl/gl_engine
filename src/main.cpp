@@ -40,6 +40,8 @@ extern struct rgba RGBA_BG_COLOR;
 extern float g_world_scale;
 extern float g_cam_x;
 extern float g_cam_y;
+extern float g_cam_max_speed;
+extern float g_cam_tether_distance;
 extern void (*keybind_actions[MAX_SCANCODES])(void);
 extern int keybind_list[MAX_SCANCODES];
 
@@ -240,8 +242,11 @@ int main()
 
 	// Scale to transform from world to screen space
 	set_world_scale(WORLD_SCALE);
-	// Camera posistion determines the origin of screen space
+	// Camera posistion determines the origin of view space
 	set_cam_pos(0.0f, 0.0f);
+	// Determine how the camera will move in the main loop
+	set_camera_movement_type(glCamFixed, player_object);
+	set_cam_tether_distance(10.0f);
 
 	// Bind keys to action functions using GLFW to capture input
 	register_key_action_pair(GLFW_KEY_F, &player_up);
@@ -272,6 +277,9 @@ int main()
 		use_shader(shader1);
 
 		// Set uniform values
+
+		// Camera position and scale
+		move_camera();
 		update_camera(shader1);
 		set_uniforms2(g_world_scale, g_world_scale, shader1, "screen_scalar");
 
