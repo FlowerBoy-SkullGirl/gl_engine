@@ -240,8 +240,11 @@ int main()
 
 	/* Debugging information */
 	if (g_debugging){
+		// Get errors from OpenGL before the main loop
 		int glStatus = (int) glGetError();
 		fprintf(stdout, "Preloop %d\n", glStatus);
+		// Enable the fragment shader debugging uniform
+		set_uniform_int(g_debugging, shader1, "debuggingEnabled");
 	}
 	
 	/* Pre-screen configuration */
