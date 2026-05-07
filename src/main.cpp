@@ -53,6 +53,8 @@ struct game_object *player_object;
 
 GLFWwindow* main_game_window;
 
+int g_debugging = 0;
+
 // Callback functions
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
@@ -98,7 +100,12 @@ void glfw_error_callback(int error, const char* description)
 
 int main()
 {
-	allow_debug();
+	// Enable debugging throughout program
+	g_debugging = 1;
+
+	if (g_debugging)
+		allow_debug();
+
 	/* CREATE WINDOW SECTION START
 	 * Use glfw to create the window in the operating system which OpenGL will render to 
 	 */
@@ -232,8 +239,10 @@ int main()
 
 
 	/* Debugging information */
-	int glStatus = (int) glGetError();
-	//fprintf(stdout, "Preloop %d\n", glStatus);
+	if (g_debugging){
+		int glStatus = (int) glGetError();
+		fprintf(stdout, "Preloop %d\n", glStatus);
+	}
 	
 	/* Pre-screen configuration */
 	// Color selection for background of window
@@ -315,10 +324,14 @@ int main()
 		}
 
 		// Determine collisions
-		if (check_collision_objects(player_object, tall_square))
-			set_object_color(player_object, convert_to_rgba(0.7f, 0.0f, 0.3f, 0.8f));
-		else
+		if (check_collision_objects(player_object, tall_square)){
+			// Change object color if debugging is enabled
+			if (g_debugging)
+				set_object_color(player_object, convert_to_rgba(0.7f, 0.0f, 0.3f, 0.8f));
+		}
+		else{
 			set_object_color(player_object, convert_to_rgba(0.0f, 0.0f, 1.0f, 0.8f));
+		}
 
 
 		glfwSwapBuffers(window);
