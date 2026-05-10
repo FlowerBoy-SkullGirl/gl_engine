@@ -12,6 +12,33 @@
 
 #define DEFAULT_MESH_SIZE 2.0
 float g_mesh_max_size = sqrt(DEFAULT_MESH_SIZE);
+//Global value used to track the number of vertices currently accomodated by collision heap memory
+size_t g_current_allocation_collision_v = 0;
+float *g_collision_vertices = NULL;
+
+// Takes the largest of the two arguments and allocates enough space to hold twice as many floats
+void allocate_collision_memory(size_t obj1_vertices, size_t obj2_vertices)
+{
+	size_t largest_v = std::max(obj1_vertices, obj2_vertices);
+
+	if (largest_v > g_current_allocation_collision_v){
+		// Calling realloc on NULL will have the same result as calling malloc
+		// Allocate twice the size of the largest hitbox, that way we are able to calculate any 
+		// 2 of the largest objects encountered
+		g_collision_vertices = (float *) realloc(g_collision_vertices, sizeof(float) * (largest_v * 2));
+		g_current_allocation_collision_v = largest_v;
+	}
+}
+
+// Cleanup for allocated memory after collision will no longer be detected, must be called by program that uses any 
+// Collision functions in collision.cpp
+void free_collision_memory()
+{
+	if (g_collision_vertices != NULL){
+		free(g_collision_vertices);
+		g_collision_vertices == NULL;
+	}
+}
 
 // Transforms the coordinate space of one object into the other so it may be determined if one has a vertex within the other
 int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_object *ob2, struct gl_hitbox *hb2)
@@ -37,9 +64,9 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 	scale2(&delta_pos_x, &delta_pos_y, delta_s_x, delta_s_y);
 	rotate2(&delta_pos_x, &delta_pos_y, delta_r);
 	// Apply the necessary transformations to the vertices to determine their edges
-	// TODO: Statically allocate this memory so that we do not call malloc on every collision check
-	float *vert1 = (float *)malloc((sizeof(float) * (hb1->mesh->shape->size_v)));
-	float *vert2 = (float *)malloc((sizeof(float) * (hb2->mesh->shape->size_v)));
+	allocate_collision_memory(hb1->mesh->shape->size_v, hb2->mesh->shape->size_v);
+	float *vert1 = g_collision_vertices;
+	float *vert2 = g_collision_vertices + (hb1->mesh->shape->size_v);
 
 	// Hb1 vertices will be normalized to -1, 1
 	// Hb2 will be transformed with hb1 space as the basis
@@ -64,8 +91,6 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 
 	//If detected, return early
 	if (collision_detected){
-		free(vert1);
-		free(vert2);
 		return 1;
 	}
 
@@ -93,9 +118,6 @@ int hitbox_collide(struct game_object *ob1, struct gl_hitbox *hb1, struct game_o
 		}
 	}
 
-	//Cleanup
-	free(vert1);
-	free(vert2);
 
 	if (collision_detected)
 		return 1;

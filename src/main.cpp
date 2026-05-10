@@ -353,6 +353,8 @@ int main()
 	destroy_object_list(mid_objects);
 	destroy_object_list(fg_objects);
 
+	free_collision_memory();
+
 	glfwTerminate();
 	return 0;
 }

@@ -83,6 +83,10 @@
 					<ul>
 						<li>Image files that are used to apply <a href="textures.html">textures</a> to objects. These are png files that are parsed by stbi and used by the main function through the project's textures library.</li>
 				</ul></h4>
+
+				<h1>Diagrams</h1>
+				<h4>Below is a high level overview of how system libraries interact with one another. A game object is the most abstracted class, which has many hitboxes, one mesh that may be attached to many game objects, an rgba color struct, a velocity struct, and a texture integer. Each mesh has one shape and a fixed number of buffer_t objects that should be initialized with the mesh. The buffer, shaders, and textures library all wrap the OpenGL API to abstract some of its functionality.</h4>
+				<img src="img/HighLevelOverview.png" alt="The described diagram in psuedo-UML" width="880" height="780">
 				
 			</div>
 
