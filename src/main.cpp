@@ -26,6 +26,10 @@
 
 #define V_PI 3.1415
 
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 600
+#define WINDOW_NAME_MAX 256
+
 #define WORLD_SCALE 0.025
 #define BASE_VEL 3.0
 //Allow debugging from attached GDB
@@ -103,6 +107,8 @@ int main()
 	// Enable debugging throughout program
 	g_debugging = 1;
 
+	const char window_name[WINDOW_NAME_MAX] = "Square";
+
 	if (g_debugging)
 		allow_debug();
 
@@ -120,7 +126,7 @@ int main()
 
 	glfwSetErrorCallback(glfw_error_callback);
 
-	GLFWwindow* window = glfwCreateWindow(800, 600, "Square", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, window_name, NULL, NULL);
 	if (!window)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -136,7 +142,7 @@ int main()
 	// See commit a2fa2b8fac601c16c9487ad0666218deb9db45c6
 	gladLoadGL(glfwGetProcAddress);
 
-	glViewport(0, 0, 800, 600);
+	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 
