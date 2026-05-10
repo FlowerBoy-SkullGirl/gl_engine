@@ -32,6 +32,7 @@
 
 #define WORLD_SCALE 0.025
 #define BASE_VEL 3.0
+#define RATE_ACCELERATION 0.4
 //Allow debugging from attached GDB
 #include <sys/prctl.h>
 void allow_debug()
@@ -75,25 +76,37 @@ void exit_window()
 
 void player_up()
 {
-	set_object_pos(player_object, player_object->pos_x, player_object->pos_y + (BASE_VEL * g_delta_t));
+	struct velocity vel;
+	vel.y = BASE_VEL;
+	(player_object->vel).y = vel.y;
+	set_object_pos(player_object, player_object->pos_x, player_object->pos_y + ((player_object->vel).y * g_delta_t));
 	set_object_rotation(player_object, 0.0f);
 }
 
 void player_down()
 {
-	set_object_pos(player_object, player_object->pos_x, player_object->pos_y - (BASE_VEL * g_delta_t));
+	struct velocity vel;
+	vel.y = BASE_VEL * -1.0f;
+	(player_object->vel).y = vel.y;
+	set_object_pos(player_object, player_object->pos_x, player_object->pos_y + ((player_object->vel).y * g_delta_t));
 	set_object_rotation(player_object, V_PI);
 }
 
 void player_left()
 {
-	set_object_pos(player_object, player_object->pos_x - (BASE_VEL * g_delta_t), player_object->pos_y);
+	struct velocity vel;
+	vel.x = BASE_VEL * -1.0f;
+	(player_object->vel).x = vel.x;
+	set_object_pos(player_object, player_object->pos_x + ((player_object->vel).x * g_delta_t), player_object->pos_y);
 	set_object_rotation(player_object, (3.0f * V_PI/2.0f));
 }
 
 void player_right()
 {
-	set_object_pos(player_object, player_object->pos_x + (BASE_VEL * g_delta_t), player_object->pos_y);
+	struct velocity vel;
+	vel.x = BASE_VEL;
+	(player_object->vel).x = vel.x;
+	set_object_pos(player_object, player_object->pos_x + ((player_object->vel).x * g_delta_t), player_object->pos_y);
 	set_object_rotation(player_object, (V_PI/2.0f));
 }
 
@@ -263,7 +276,8 @@ int main()
 	// Camera posistion determines the origin of view space
 	set_cam_pos(0.0f, 0.0f);
 	// Determine how the camera will move in the main loop
-	set_camera_movement_type(glCamFixed, player_object);
+	//set_camera_movement_type(glCamFixed, player_object);
+	set_camera_movement_type(glCamTethered, player_object);
 	set_cam_tether_distance(10.0f);
 
 	// Bind keys to action functions using GLFW to capture input
@@ -294,8 +308,8 @@ int main()
 		// Use the vertex shader
 		use_shader(shader1);
 
-		// Set uniform values
 
+		// Set uniform values
 		// Camera position and scale
 		move_camera();
 		update_camera(shader1);
