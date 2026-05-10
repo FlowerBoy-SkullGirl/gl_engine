@@ -9,7 +9,7 @@
 #define DEFAULT_GL_CAM_TETHER_D 0.0f
 #define DEFAULT_GL_CAM_POS 0.0f
 #define DEFAULT_GL_CAM_FOCUS NULL
-#define RATE_CAMERA_SLOW 0.01
+#define RATE_CAMERA_SLOW 0.3
 #define OFFSET_ERROR 0.999
 
 #include <iostream> // For debugging only
@@ -70,23 +70,19 @@ struct velocity calculate_tether()
 
 	double d = distance2(g_cam_x, g_cam_y, g_cam_focus->pos_x, g_cam_focus->pos_y);
 	if (d >= g_cam_tether_distance){
-		printf("Cam x: %f, y: %f\n", g_cam_x, g_cam_y);
-		printf("Distance: %f\n", d);
 		// Find angle between camera and focus object
 		double a = calc_angle(g_cam_focus->pos_x, g_cam_focus->pos_y, g_cam_x, g_cam_y, d);
-		printf("Angle: %f\n", a);
 		// Maintain the same angle, but change the magnitude to exactly g_cam_tether_distance
-		float offset_x = cos(a) * g_cam_tether_distance * OFFSET_ERROR;
-		float offset_y = sin(a) * g_cam_tether_distance * OFFSET_ERROR;
-		printf("Offset x: %f, y: %f\n", offset_x, offset_y);
+		float offset_x = cos(a) * g_cam_tether_distance;
+		float offset_y = sin(a) * g_cam_tether_distance;
 		set_cam_pos(g_cam_focus->pos_x - offset_x, g_cam_focus->pos_y - offset_y);
-		printf("Cam x: %f, y: %f\n", g_cam_x, g_cam_y);
+		// Set the camera velocity to the focus object's velocity, as if it's being 'dragged'
 		g_cam_vel.x = (g_cam_focus->vel).x;
 		g_cam_vel.y = (g_cam_focus->vel).y;
 	}else{
 		// Continue moving, but slow down as the camera continues to approach the object
-		g_cam_vel.x *= RATE_CAMERA_SLOW * g_delta_t;
-		g_cam_vel.y *= RATE_CAMERA_SLOW * g_delta_t;
+		g_cam_vel.x -= g_cam_vel.x * RATE_CAMERA_SLOW * g_delta_t;
+		g_cam_vel.y -= g_cam_vel.y * RATE_CAMERA_SLOW * g_delta_t;
 	}
 	return g_cam_vel;
 }
