@@ -60,7 +60,7 @@ struct row_object{
 	int column_count;
 	void *data_list;
 	size_t data_list_size;
-	DB_TYPES *data_type_list;
+	enum DB_TYPES *data_type_list;
 };
 
 /*
@@ -97,7 +97,7 @@ int get_column_count(int, struct gl_db *);
 int get_row_count(int, struct gl_db *);
 
 // Get table column data types
-DB_TYPES *get_data_types_list(int, struct gl_db *);
+enum DB_TYPES *get_data_types_list(int, struct gl_db *);
 
 // Remove a table from the database
 void remove_table_from_db(int, struct gl_db *);

@@ -1,6 +1,8 @@
 #ifndef OBJECTS_H
 #define OBJECTS_H
 
+enum GL_MeshType {TriangleGLMesh, SquareGLMesh};
+
 struct game_object{
 	// Shape, color, texture
 	struct gl_mesh *mesh; 
@@ -54,5 +56,21 @@ int add_object_hitbox(struct game_object *, struct gl_hitbox *);
 
 // Draw function
 void draw_game_object(struct game_object *, unsigned int);
+
+// Helper function for serializing game objects
+// Takes a pointer to a buffer, a pointer to data to be written, an offset from the start of the buffer, 
+// the size of the object, and the total length of the buffer
+size_t write_to_buffer(char *, char *, size_t, size_t, size_t);
+
+// Serialize into database object
+// Allocates memory, so a call to free_serialized_data() must be made afterwards
+struct row_object *serialize_game_object(struct game_object *);
+
+// Deserialize game object data from a database row_object
+// Allocates memory for a game object, which can be freed using free_game_object()
+struct game_object *deserialize_game_object(struct row_object *);
+
+// Free serialized data
+struct row_object *free_serialized_data(struct row_object *);
 
 #endif
