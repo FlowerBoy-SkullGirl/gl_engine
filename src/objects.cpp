@@ -18,11 +18,10 @@
 
 #define DEFAULT_R_MOMENTUM 0.7
 
-<<<<<<< HEAD
 #define SERIAL_NUM_INTS = 1;
 #define SERIAL_NUM_FLOATS = 5;
 #define SERIAL_NUM_STRINGS = 0;
->>>>>>> main
+
 // Allocates memory for a game_object with malloc, must be freed with free_game_object()
 struct game_object *init_game_object()
 {
@@ -53,9 +52,7 @@ struct game_object *init_game_object()
 }
 
 // Frees memory allocated by init_game_object()
-<<<<<<< HEAD
 // Does not free mesh object, since a mesh can be used for many objects
->>>>>>> main
 void free_game_object(struct game_object *op)
 {
 	if (op == NULL)
