@@ -26,6 +26,10 @@
 
 #define V_PI 3.1415
 
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 600
+#define WINDOW_NAME_MAX 256
+
 #define WORLD_SCALE 0.025
 #define BASE_VEL 3.0
 //Allow debugging from attached GDB
@@ -40,6 +44,8 @@ extern struct rgba RGBA_BG_COLOR;
 extern float g_world_scale;
 extern float g_cam_x;
 extern float g_cam_y;
+extern float g_cam_max_speed;
+extern float g_cam_tether_distance;
 extern void (*keybind_actions[MAX_SCANCODES])(void);
 extern int keybind_list[MAX_SCANCODES];
 
@@ -51,6 +57,9 @@ struct game_object *player_object;
 
 GLFWwindow* main_game_window;
 
+int g_debugging = 0;
+
+// Callback functions
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 
@@ -95,8 +104,17 @@ void glfw_error_callback(int error, const char* description)
 
 int main()
 {
-	allow_debug();
-/* CREATE WINDOW SECTION START */
+	// Enable debugging throughout program
+	g_debugging = 1;
+
+	const char window_name[WINDOW_NAME_MAX] = "Square";
+
+	if (g_debugging)
+		allow_debug();
+
+	/* CREATE WINDOW SECTION START
+	 * Use glfw to create the window in the operating system which OpenGL will render to 
+	 */
 	if(!glfwInit())
 	{
 		std::cout << "Failed glfw init" << std::endl;
@@ -108,7 +126,7 @@ int main()
 
 	glfwSetErrorCallback(glfw_error_callback);
 
-	GLFWwindow* window = glfwCreateWindow(800, 600, "Square", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, window_name, NULL, NULL);
 	if (!window)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -120,22 +138,15 @@ int main()
 
 	glfwMakeContextCurrent(window);
 
-	//glewExperimental = GL_TRUE;
-	//GLenum glewres;
-	/*if (glewres = glewInit() != GLEW_OK)
-	{
-		std::cout << "Failed glew" << glewGetErrorString(glewres) << std::endl;
-		return -2;
-	}
-	*/
+	// Glad has replaced Glew as the library used to bind OpenGL calls
+	// See commit a2fa2b8fac601c16c9487ad0666218deb9db45c6
 	gladLoadGL(glfwGetProcAddress);
 
-	glViewport(0, 0, 800, 600);
+	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-/* CREATE WINDOW SECTION DONE */
 
-/* LOAD SHAPES FOR BUFFERS */
+	/* LOAD SHAPES FOR BUFFERS */
 
 	struct gl_shape *square_shape = load_mesh("meshes/square.glMesh");	
 	struct gl_shape *triangle_shape = load_mesh("meshes/triangle.glMesh");	
@@ -147,28 +158,27 @@ int main()
 	build_buffers(triangle_mesh);
 
 	bind_array(0);
-/* END LOAD SHAPES */
 
-/* LOAD MESH FOR HITBOXES */
+	/* LOAD MESH FOR HITBOXES */
 	struct gl_shape *square_hitbox_shape = load_mesh("meshes/square_hitbox.glMesh");
 	struct gl_mesh *square_hitbox_mesh = init_mesh(square_hitbox_shape);
-/* END LOAD MESH FOR HITBOXES */
 
-/* LOAD TEXTURES */
-
+	/* LOAD TEXTURES */
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	stbi_set_flip_vertically_on_load(true);
 	unsigned int cloud_tex = load_texture("textures/cloud.png");
-/* END LOAD TEXTURES */
 
-/* CREATE HITBOXES */
+	/* CREATE HITBOXES */
 	struct gl_hitbox *square_hitbox = create_hitbox(square_hitbox_mesh);
 	struct gl_hitbox *tall_square_hitbox = create_hitbox(square_hitbox_mesh);
 	tall_square_hitbox->scale_y = 4.0f;
-/* END CREATE HITBOXES */
 
-/* CREATE OBJECTS WITH BUFFERS */
+	/* CREATE OBJECTS WITH BUFFERS 
+	 * Objects are also appended to a specific object list,
+	 * objects not in these lists are not rendered in the main loop
+	 * or considered for collision checks
+	 */
 	struct object_list *bg_objects = create_object_list_node();
 	struct object_list *mid_objects = create_object_list_node();
 	struct object_list *fg_objects = create_object_list_node();
@@ -217,14 +227,12 @@ int main()
 	add_object_hitbox(player_object, square_hitbox);
 	append_object(mid_objects, player_object);
 
-/* END CREATE OBJECTS */
 
 	//Initialize VECTOR MODE
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-/* LOAD SHADERS START */
-	// Vertex shader
+	/* LOAD SHADERS START */
 	unsigned int vertexShader = compile_shader(V_SHADER_FILE, GL_VERTEX_SHADER);
 
 	unsigned int fragmentShader = compile_shader(F_SHADER_FILE, GL_FRAGMENT_SHADER);
@@ -235,26 +243,40 @@ int main()
 
 	use_shader(shader1);	
 
-/* LOAD SHADERS DONE */
 
-/* */
-	int glStatus = (int) glGetError();
-	//fprintf(stdout, "Preloop %d\n", glStatus);
+	/* Debugging information */
+	if (g_debugging){
+		// Get errors from OpenGL before the main loop
+		int glStatus = (int) glGetError();
+		fprintf(stdout, "Preloop %d\n", glStatus);
+		// Enable the fragment shader debugging uniform
+		set_uniform_int(g_debugging, shader1, "debuggingEnabled");
+	}
 	
-/* Pre-screen configuration */
+	/* Pre-screen configuration */
+	// Color selection for background of window
 	struct rgba bg_color = convert_to_rgba(0.0f, 0.1f, 0.1f, 1.0f);
 	set_bg_color(bg_color);
 
+	// Scale to transform from world to screen space
 	set_world_scale(WORLD_SCALE);
+	// Camera posistion determines the origin of view space
 	set_cam_pos(0.0f, 0.0f);
+	// Determine how the camera will move in the main loop
+	set_camera_movement_type(glCamFixed, player_object);
+	set_cam_tether_distance(10.0f);
 
+	// Bind keys to action functions using GLFW to capture input
 	register_key_action_pair(GLFW_KEY_F, &player_up);
 	register_key_action_pair(GLFW_KEY_S, &player_down);
 	register_key_action_pair(GLFW_KEY_R, &player_left);
 	register_key_action_pair(GLFW_KEY_T, &player_right);
 	register_key_action_pair(GLFW_KEY_ESCAPE, &exit_window);
 
-/* MAIN LOOP START */
+	/* MAIN LOOP START
+	 * Physics and rendering both take place within this function
+	 * input is captured before the frame is drawn
+	 */
 	while(!glfwWindowShouldClose(window))
 	{
 		// Process delta time
@@ -273,6 +295,9 @@ int main()
 		use_shader(shader1);
 
 		// Set uniform values
+
+		// Camera position and scale
+		move_camera();
 		update_camera(shader1);
 		set_uniforms2(g_world_scale, g_world_scale, shader1, "screen_scalar");
 
@@ -308,10 +333,14 @@ int main()
 		}
 
 		// Determine collisions
-		if (check_collision_objects(player_object, tall_square))
-			set_object_color(player_object, convert_to_rgba(0.7f, 0.0f, 0.3f, 0.8f));
-		else
+		if (check_collision_objects(player_object, tall_square)){
+			// Change object color if debugging is enabled
+			if (g_debugging)
+				set_object_color(player_object, convert_to_rgba(0.7f, 0.0f, 0.3f, 0.8f));
+		}
+		else{
 			set_object_color(player_object, convert_to_rgba(0.0f, 0.0f, 1.0f, 0.8f));
+		}
 
 
 		glfwSwapBuffers(window);
@@ -319,9 +348,8 @@ int main()
 		bind_array(0);
 	}
 
-/* MAIN LOOP DONE */
 
-/* CLEAN UP */
+	/* CLEAN UP */
 	glDeleteProgram(shader1);
 
 	destroy_mesh(square_mesh);
@@ -330,6 +358,8 @@ int main()
 	destroy_object_list(bg_objects);
 	destroy_object_list(mid_objects);
 	destroy_object_list(fg_objects);
+
+	free_collision_memory();
 
 	glfwTerminate();
 	return 0;

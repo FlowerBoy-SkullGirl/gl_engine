@@ -3,6 +3,10 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
+// The lists of key action pairs are stored in arrays because a typical input device will have no more than a few hundred distinct
+// inputs, at most. Additional pairs are disallowed in the current version of the program
+// This allows us to store the associated index of the keybind_actions[] array as a value in the keybind_list[] array
+// Without compromising the time it takes to access or iterate through either list
 void (*keybind_actions[MAX_SCANCODES])(void);
 int keybind_list[MAX_SCANCODES] = {0};
 

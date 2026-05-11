@@ -9,7 +9,18 @@
 #include "headers/shapes.h"
 
 #define MAX_DIGIT_MESH 256
+#define SHADER_LAYOUTS 2
+#define SIZE_VECTOR 2
 
+// Take a filename and load vertex data from it
+/* glMesh files are formatted so that
+ * forward slashes represent commented lines
+ * \n newlines end comments
+ * commas separate values
+ * float values represent vertices
+ * int values represent indices
+ * semi-colons separate lists of vertices and indices
+ */
 struct gl_shape *load_mesh(const char *filen)
 {
 	FILE *fp = fopen(filen, "r");
@@ -123,6 +134,7 @@ struct gl_shape *load_mesh(const char *filen)
 	return mesh;
 }
 
+// Takes a pointer to a valid gl_shape and allocates memory for a mesh that uses that shape
 struct gl_mesh *init_mesh(struct gl_shape *sp)
 {
 	struct gl_mesh *mp = (struct gl_mesh *)malloc(sizeof(struct gl_mesh));
@@ -135,6 +147,7 @@ struct gl_mesh *init_mesh(struct gl_shape *sp)
 	return mp;
 }
 
+// Abstracts the creation of OpenGL buffer objects for a given mesh
 int build_buffers(struct gl_mesh *mp)
 {
 	if (mp == NULL)
@@ -160,15 +173,20 @@ int build_buffers(struct gl_mesh *mp)
 	set_buffer(mp->EBO, index_buf, GL_DYNAMIC_DRAW);
 
 	// Set the array attributes for the vertex shader
-	int num_layouts = 2;
-	set_array_attributes(0, 2, GL_FLOAT, sizeof(float), num_layouts, 0);
-	set_array_attributes(1, 2, GL_FLOAT, sizeof(float), num_layouts, 2);
+	// The first argument is the index of the layout, so it is incremented for each call
+	// The last argument is an offset, so it is set to 0 for the first layout and set to the
+	// Size of the first layout vector for the second layout
+	int num_layouts = SHADER_LAYOUTS;
+	int offset = SIZE_VECTOR;
+	set_array_attributes(0, SIZE_VECTOR, GL_FLOAT, sizeof(float), num_layouts, 0);
+	set_array_attributes(1, SIZE_VECTOR, GL_FLOAT, sizeof(float), num_layouts, offset);
 
 	bind_array(0);
 	return 0;
 
 }
 
+// Performs cleanup and frees the memory of buffers, shapes, and the mesh itself
 void destroy_mesh(struct gl_mesh *mp)
 {
 	if (mp == NULL)

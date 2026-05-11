@@ -17,7 +17,9 @@ struct gl_hitbox {
 	float offset_rot;
 };
 
+// Allocates memory for a hitbox, which must be freed with destroy_hitbox()
 struct gl_hitbox *create_hitbox(struct gl_mesh *);
 
+// Frees memory from a hitbox, which was allocated with create_hitbox()
 void destroy_hitbox(struct gl_hitbox *);
 #endif

@@ -5,6 +5,7 @@
 #include "headers/textures.h"
 #include "headers/stb_image.h"
 
+// load a texture from a file, using stbi to load an RGBA image
 unsigned int load_texture(const char *filen)
 {
 	// Create the texture
@@ -29,6 +30,7 @@ unsigned int load_texture(const char *filen)
 	return texID;
 }
 
+// Wraps the OpenGL glBindTexture function
 void bind_texture(unsigned int id)
 {
 	glBindTexture(GL_TEXTURE_2D, id);
