@@ -10,7 +10,6 @@
 #define DEFAULT_GL_CAM_POS 0.0f
 #define DEFAULT_GL_CAM_FOCUS NULL
 #define RATE_CAMERA_SLOW 0.3
-#define OFFSET_ERROR 0.999
 
 #include <iostream> // For debugging only
 
