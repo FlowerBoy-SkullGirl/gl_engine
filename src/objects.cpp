@@ -22,6 +22,7 @@
 #define SERIAL_NUM_FLOATS = 5;
 #define SERIAL_NUM_STRINGS = 0;
 
+// Allocates memory for a game_object with malloc, must be freed with free_game_object()
 struct game_object *init_game_object()
 {
 	struct game_object *op = (struct game_object *)malloc(sizeof(struct game_object));
@@ -50,7 +51,8 @@ struct game_object *init_game_object()
 	return op;
 }
 
-// Does not free mesh object
+// Frees memory allocated by init_game_object()
+// Does not free mesh object, since a mesh can be used for many objects
 void free_game_object(struct game_object *op)
 {
 	if (op == NULL)
@@ -136,7 +138,7 @@ int add_object_hitbox(struct game_object *op, struct gl_hitbox *hb)
 	return 0;
 }
 
-// Wraps calls to OpenGL and sets uniform values for the appropriate shaders
+// Draws the game object by passing uniforms to the shaders and calling the glDrawElements function
 void draw_game_object(struct game_object *op, unsigned int shader)
 {
 	// Set the uniforms
@@ -381,6 +383,8 @@ struct game_object *deserialize_game_object(struct row_object *ro)
 	return op;
 }
 
+// Checks that all members of the struct have been freed, then frees the memory for the struct
+// Returns null
 struct row_object *free_serialized_data(struct row_object *ro)
 {
 	if(ro == NULL)
