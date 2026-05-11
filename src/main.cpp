@@ -32,7 +32,7 @@
 
 #define WORLD_SCALE 0.025
 #define BASE_VEL 3.0
-#define RATE_ACCELERATION 0.4
+#define RATE_ACCELERATION 0.7
 //Allow debugging from attached GDB
 #include <sys/prctl.h>
 void allow_debug()
@@ -63,10 +63,16 @@ int g_debugging = 0;
 // Callback functions
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
+// Use the player object's velocity to determine it's position each screen draw
+void move_player_object()
+{
+	set_object_pos(player_object, player_object->pos_x + ((player_object->vel).x * g_delta_t), player_object->pos_y + ((player_object->vel).y * g_delta_t));
+}
 
 void processInput(GLFWwindow *window)
 {
     process_keybinds();
+    move_player_object();
 }
 
 void exit_window()
@@ -74,39 +80,42 @@ void exit_window()
         glfwSetWindowShouldClose(main_game_window, true);
 }
 
+/*
+ * Input functions change the player object's velocity based on the max velocity, the rate of acceleration, and the change in time since
+ * last screen draw. The min value is taken between the calculated new velocity and the max velocity.
+ * Actual changes to the player object position are done each screen draw by "move_player_object().
+ */
 void player_up()
 {
 	struct velocity vel;
-	vel.y = BASE_VEL;
+	vel.y = std::min((BASE_VEL * RATE_ACCELERATION * g_delta_t) + (player_object->vel).y, BASE_VEL);
 	(player_object->vel).y = vel.y;
-	set_object_pos(player_object, player_object->pos_x, player_object->pos_y + ((player_object->vel).y * g_delta_t));
 	set_object_rotation(player_object, 0.0f);
 }
 
 void player_down()
 {
 	struct velocity vel;
-	vel.y = BASE_VEL * -1.0f;
+	vel.y = std::min((BASE_VEL * RATE_ACCELERATION * g_delta_t) + fabs((player_object->vel).y), BASE_VEL);
+	vel.y *= -1.0f;
 	(player_object->vel).y = vel.y;
-	set_object_pos(player_object, player_object->pos_x, player_object->pos_y + ((player_object->vel).y * g_delta_t));
 	set_object_rotation(player_object, V_PI);
 }
 
 void player_left()
 {
 	struct velocity vel;
-	vel.x = BASE_VEL * -1.0f;
+	vel.x = std::min((BASE_VEL * RATE_ACCELERATION * g_delta_t) + fabs((player_object->vel).x), BASE_VEL);
+	vel.x *= -1.0f;
 	(player_object->vel).x = vel.x;
-	set_object_pos(player_object, player_object->pos_x + ((player_object->vel).x * g_delta_t), player_object->pos_y);
 	set_object_rotation(player_object, (3.0f * V_PI/2.0f));
 }
 
 void player_right()
 {
 	struct velocity vel;
-	vel.x = BASE_VEL;
+	vel.x = std::min((BASE_VEL * RATE_ACCELERATION * g_delta_t) + (player_object->vel).x, BASE_VEL);
 	(player_object->vel).x = vel.x;
-	set_object_pos(player_object, player_object->pos_x + ((player_object->vel).x * g_delta_t), player_object->pos_y);
 	set_object_rotation(player_object, (V_PI/2.0f));
 }
 
