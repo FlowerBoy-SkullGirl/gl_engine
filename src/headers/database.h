@@ -16,9 +16,9 @@
  *    however they do not contain an id value, and only store string values
  *  Newlines are optional and all whitespace is ignored unless inside a column value or name string
  *  A table may be visualized like so:
- *  {Table: id_val,row_count,col_count,"name",{"col_names"},{col1_data_type,col2_data_type,},{row: id_val,col2_val,col3_val,...}}
+ *  {Table: id_val,row_id_count,row_count,col_count,"name",{"col_names"},{col1_data_type,col2_data_type,},{row: id_val,col2_val,col3_val,...}}
  *  Or like so:
- *  {Table: id_val, row_count, col_count, "name", {"col_names"}, {col1_data_type, col2_data_type, ...},
+ *  {Table: id_val, row_id_count, row_count, col_count, "name", {"col_names"}, {col1_data_type, col2_data_type, ...},
  *      {row: id_val, col2_val, col3_val},
  *      {row: id_val, col2_val, col3_val}
  *  }
@@ -46,6 +46,9 @@
 #define DB_ROW_START '{'
 #define DB_ROW_END '}'
 #define DB_DELIMITER ','
+#define START_INDEX '0'
+#define DB_WHITESPACE ' '
+#define DB_KEY_NAME "id"
 
 struct gl_db{
 	FILE *db_file;
@@ -63,6 +66,19 @@ struct row_object{
 	enum DB_TYPES *data_type_list;
 };
 
+// Database containers metadata structs to help manage metadata queries
+struct database_metadata{
+	int num_tables;
+	int newest_table_id;
+};
+
+struct table_metadata{
+	int id;
+	int num_rows;
+	int newest_row_id;
+	int num_cols;
+};
+
 /*
  * Database managment
  */
@@ -78,8 +94,11 @@ void close_database(struct gl_db *);
 // Delete a database
 int delete_database(const char *);
 
-// Get number of tables from a database
-int get_table_count(struct gl_db *);
+// Get number of tables and table id count from a database
+struct database_metadata get_database_metadata(struct gl_db *);
+
+// Write the number of tables and table id count into the database file
+int write_database_metadata(struct database_metadata, struct gl_db *db)
 
 /*
  *Table management
@@ -105,8 +124,8 @@ void remove_table_from_db(int, struct gl_db *);
 /*
  *Column management
  */
-// Add a column in a table with a string identifier, specify table id and database
-int add_column_to_table(const char*, int, struct gl_db *);
+// Add a column in a table with a string identifier and type specification ,specify table id and database
+int add_column_to_table(const char*, enum DB_TYPES, int, struct gl_db *);
 
 // Get the index of a column from the string name, table id, and database
 int get_column_index(const char*, int, struct gl_db *);

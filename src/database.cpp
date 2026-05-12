@@ -28,6 +28,12 @@ struct gl_db *create_database(const char *filen)
 		return NULL;
 	}
 
+	size_t char_size = sizeof(char);
+	// An empty database will contain metadata: number of tables, and count of used table id's
+	fwrite(&START_INDEX, char_size, 1,fp);
+	fwrite(&DB_DELIMITER, char_size, 1,fp);
+	fwrite(&START_INDEX, char_size, 1,fp);
+
 	//File was created successfully and is open for writing and reading
 	db->db_file = fp;
 	return db;
@@ -77,9 +83,12 @@ int delete_database(const char* filen)
 }
 
 // Get number of tables from a database, returns 0 if database is not open
-int get_table_count(struct gl_db *db)
+struct database_metadata get_database_metadata(struct gl_db *db)
 {
-	int table_count = 0;
+	struct database_metadata db_md;
+	db_md.num_tables = 0;
+	db_md.newest_table_id = 0;
+
 	char c;
 	char *buffer;
 	// Return early if database is not open
@@ -96,32 +105,119 @@ int get_table_count(struct gl_db *db)
 	for(; max > 0; digits++){
 		max /= 10;
 	}
+	size_t digit_chars = digits * sizeof(char);
+
 	// Allocate a buffer that can hold the maximum number of plain text digits required
 	// Sizeof(char) should be 1, but is added in case this is different
-	buffer = (char *) malloc((sizeof(char))*digits);
+	buffer = (char *) malloc(digit_chars);
 
 	// Return 0 if buffer cannot be allocated
 	if (buffer == NULL)
 		return 0;
 
 	// Place file pointer at beginning of database file, where table count is guaranteed to be
-	fseek(db->db_file, 0, SEEK_SET);
+	fseeko(db->db_file, 0, SEEK_SET);
 
+	// Table count will be the first metadata element
 	int buffer_offset = 0;
 	while((c = fgetc(db->db_file)) != EOF){
 		// If we are reading further than the size of our buffer, return 0
-		if (buffer_offset > (sizeof(char))*digits)
+		if (buffer_offset > digit_chars)
 			return 0;
-		// If the beginning of a table is encountered, break from loop
-		if (c == DB_TABLE_START)
+		// If a delimiter is encountered, break. Table count is first value in database
+		if (c == DB_DELIMITER)
 			break;
-		// All characters preceding the first table should be the integer table count
+		// All characters preceding the first delimiter should be the integer table count
 		*(buffer + buffer_offset) = c;
 		buffer_offset++;
 	}
 	// Use sscanf to parse an integer from the buffer, then return it
-	sscanf(buffer, "%d", &table_count);
-	return table_count;
+	sscanf(buffer, "%d", &(db_md.num_tables));
+
+	// Reset buffer offset
+	buffer_offset = 0;
+	// Set buffer to 0
+	memset(buffer, 0, digit_chars);
+
+	// Begin reading next element, which will be table id count 
+	while((c = fgetc(db->db_file)) != EOF){
+		// If we are reading further than the size of our buffer, return 0
+		if (buffer_offset > digit_chars)
+			return 0;
+		// If a delimiter is encountered, there is an error in the database, break
+		if (c == DB_DELIMITER){
+			return db_md;
+			break;
+		}
+		// If table start is encountered, all database metadata has been read
+		if (c == DB_TABLE_START)
+			break;
+		// All characters preceding the first delimiter should be the integer table count
+		*(buffer + buffer_offset) = c;
+		buffer_offset++;
+	}
+	// Use sscanf to parse an integer from the buffer, then return it
+	sscanf(buffer, "%d", &(db_md.newest_table_id));
+
+	// Free the memory allocated to the buffer
+	free(buffer);
+
+	return db_md;
+}
+
+// Write the data from database_metadata struct into the db file
+int write_database_metadata(struct database_metadata db_md, struct gl_db *db)
+{
+	// Return an error if database cannot be accessed
+	if (db == NULL)
+		return 1;
+	// Used for convenience, do not close this file, as it is meant to stay open
+	FILE *fp = db->db_file;
+	size_t char_size = sizeof(char);
+
+	// Return an error if database file cannot be accessed
+	if (fp == NULL)
+		return 1;
+
+	// Ensure we are at the beginning of the file
+	fseeko(fp, 0, SEEK_SET);
+
+	// Write values from metadata struct into file in appropriate locations
+	fwrite(&(db_md.num_tables), char_size, 1,fp);
+	fwrite(&DB_DELIMITER, char_size, 1,fp);
+	fwrite(&(db_md.newest_table_id), char_size, 1,fp);
+
+	// Consider case where new metadata is fewer characters than old metadata
+	// File contents after metadata have to be preserved
+	// Writing whitespace until beginning of first table or until EOF if there is no table, since whitespace is ignored
+	
+	// Get current position offset
+	char c;
+	off_t start_ws = 0;
+	off_t end_ws = 0;
+	start_ws = ftello(fp);
+
+
+	// Find offset in file where whitespace will stop being written
+	while((c = fgetc(fp)) != EOF){
+		if (c == DB_TABLE_START)
+			break;
+	}
+	end_ws = ftello(fp);
+
+	// If the table start delimiter is the very next character after metadata, there is no need to write whitespace
+	if (start_ws == end_ws)
+		return 0;
+
+	// Move the file position back to the end of the new database metadata
+	fseeko(fp, start_ws, SEEK_SET);
+
+	// Write whitespace up until end_ws - 1
+	for (; start_ws < end_ws; start_ws++){
+		fwrite(&DB_WHITESPACE, char_size, 1, fp);
+	}
+
+	return 0;
 }
 
 
@@ -129,7 +225,56 @@ int get_table_count(struct gl_db *db)
  *Table management
  */
 // Create a table in the database with a string name and specify database, returns table id
-int add_table_to_db(const char*, struct gl_db *);
+int add_table_to_db(const char *name, struct gl_db *db)
+{
+	// Determine the table's id and index
+	struct db_md = get_database_metadata(db);
+	size_t char_size = sizeof(char);
+	// Used for convenience, do not close this file, as it is meant to stay open
+	FILE *fp = db->db_file;
+
+	// Append table to the end of the database file
+	fseeko(fp, 0, SEEK_END);
+
+	// If the maximum number of tables already exist, return
+	if (db_md.num_tables >= DB_MAX_TABLES)
+		return 1;
+	
+	// If there are no other tables, do not write a delimiter
+	if (db_md.num_tables != 0){
+		fwrite(&DB_DELIMITER, char_size, 1,fp);
+	}
+
+	// Increment the database metadata
+	db_md.num_tables += 1;
+	db_md.newest_table_id += 1;
+	// Write the new database metadata
+	if(write_database_metadata(db_md, db))
+		return 1;
+
+	// Write the table start character
+	fwrite(&DB_TABLE_START, char_size, 1,fp);
+
+	// Write the table's id, row id count, row count, column count, and name
+	fprintf(fp, "%d,%d,%d,%d,%s,", db_md.newest_table_id, 0, 0, 0, name);
+
+	// Write the row start and end delimiters for the column name list
+	fwrite(&DB_DELIMITER, char_size, 1,fp);
+	fwrite(&DB_ROW_START, char_size, 1,fp);
+	fwrite(&DB_ROW_END, char_size, 1,fp);
+
+	// Repeat the process above for the column data type list
+	fwrite(&DB_DELIMITER, char_size, 1,fp);
+	fwrite(&DB_ROW_START, char_size, 1,fp);
+	fwrite(&DB_ROW_END, char_size, 1,fp);
+
+	// Each table has a default 'id' column with type DB_INT
+	add_column_to_table(DB_KEY_NAME, db_md.newest_table_id, db);
+
+	return 0;
+}
+
+//TODO: Write/get table_metadata
 
 // Get table id from string name
 int get_table_id(const char *, struct gl_db *);
@@ -149,8 +294,11 @@ void remove_table_from_db(int, struct gl_db *);
 /*
  *Column management
  */
-// Add a column in a table with a string identifier, specify table id and database
-int add_column_to_table(const char*, int, struct gl_db *);
+// Add a column in a table with a string identifier and type specification, specify table id and database
+int add_column_to_table(const char *name, enum DB_TYPES type,int table_id, struct gl_db *db)
+{
+	
+}
 
 // Get the index of a column from the string name, table id, and database
 int get_column_index(const char*, int, struct gl_db *);
