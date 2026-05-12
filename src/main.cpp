@@ -43,10 +43,7 @@ void allow_debug()
 // Externs
 extern struct rgba RGBA_BG_COLOR;
 extern float g_world_scale;
-extern float g_cam_x;
-extern float g_cam_y;
-extern float g_cam_max_speed;
-extern float g_cam_tether_distance;
+extern struct gl_camera g_cam;
 extern void (*keybind_actions[MAX_SCANCODES])(void);
 extern int keybind_list[MAX_SCANCODES];
 

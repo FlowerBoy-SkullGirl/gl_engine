@@ -1,7 +1,24 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+// An enumerator used to clarify what type of movement the camera should follow
+// glCamStatic stays in one location in world space, glCamFixed is 'fixed' to the same coordinates as
+// a focus object, and glCamTethered is 'tethered' at a distance to a focus object
 enum glCamMovementType {glCamStatic, glCamFixed, glCamTethered};
+
+// A struct to hold global values for the camera
+struct gl_camera {
+	float x;
+	float y;
+	float max_speed;
+	struct velocity vel;
+	float tether_distance;
+	enum glCamMovementType movement_mode;
+	struct game_object *focus;
+};
+
+// Initialize default values for the camera struct
+void init_camera();
 
 // Sets the scale for transformations between world space and screen space coordinates
 void set_world_scale(float);
