@@ -99,6 +99,16 @@ int set_object_mass(struct game_object *op, float m)
 	return 0;
 }
 
+int set_object_vel(struct game_object *op, struct velocity vel)
+{
+	if (op == NULL)
+		return 1;
+
+	(op->vel.x) = vel.x;
+	(op->vel.y) = vel.y;
+	return 0;
+}
+
 // Uniforms are not immediately set until object is ready to be drawn
 int set_object_rotation(struct game_object *op, float rotation)
 {

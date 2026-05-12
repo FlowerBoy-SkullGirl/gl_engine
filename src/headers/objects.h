@@ -44,6 +44,8 @@ int set_object_texture(struct game_object *, unsigned int);
 
 int set_object_mass(struct game_object *, float);
 
+int set_object_vel(struct game_object *, struct velocity);
+
 // Uniform functions
 int set_object_rotation(struct game_object *, float);
 

@@ -57,14 +57,14 @@ double calc_angle(double x1, double y1, double x2, double y2, double distance)
 
 	// Define cases where the angle is a multiple of an integer and 1/2 PI
 	// Which occurs when there is no change in the x or y dimension
-	if (fabs(x_comp/y_comp) < 0.00001f){
-		if (y1 < y2)
+	if (x_comp == 0 || fabs(x_comp/y_comp) < 0.00001f){
+		if (y1 > y2)
 			return G_PI/2.0f;
 		else
 			return G_PI * 3.0f/2.0f;
 	}
-	if (fabs(y_comp/x_comp) < 0.0001f){
-		if (x1 < x2)
+	if (y_comp == 0 || fabs(y_comp/x_comp) < 0.0001f){
+		if (x1 > x2)
 			return 0.0f;
 		else
 			return G_PI;

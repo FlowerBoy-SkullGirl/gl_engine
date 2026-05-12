@@ -9,12 +9,16 @@
 #define DEFAULT_GL_CAM_TETHER_D 0.0f
 #define DEFAULT_GL_CAM_POS 0.0f
 #define DEFAULT_GL_CAM_FOCUS NULL
+#define RATE_CAMERA_SLOW 0.3
+
+#include <iostream> // For debugging only
 
 // Global values
 float g_world_scale;
 float g_cam_x = DEFAULT_GL_CAM_POS;
 float g_cam_y = DEFAULT_GL_CAM_POS;
 float g_cam_max_speed = DEFAULT_GL_CAM_SPEED;
+struct velocity g_cam_vel;
 // The maximum distance that the camera will travel from the focus object if movement mode is set to 'tethered'
 float g_cam_tether_distance = DEFAULT_GL_CAM_TETHER_D;
 enum glCamMovementType g_cam_movement_mode;
@@ -41,6 +45,8 @@ void set_camera_movement_type(enum glCamMovementType mode, struct game_object *f
 {
 	g_cam_movement_mode = mode;
 	g_cam_focus = focus;
+	g_cam_vel.x = 0.0;
+	g_cam_vel.y = 0.0;
 }
 
 // Sets the camera tether distance
@@ -58,25 +64,26 @@ void set_cam_max_speed(float s)
 // Calculate the tethered movement of the camera
 struct velocity calculate_tether()
 {
-	struct velocity cam_vel;
-	cam_vel.x = 0.0;
-	cam_vel.y = 0.0;
-
 	if (g_cam_focus == NULL)
-		return cam_vel; 
+		return g_cam_vel; 
 
 	double d = distance2(g_cam_x, g_cam_y, g_cam_focus->pos_x, g_cam_focus->pos_y);
 	if (d >= g_cam_tether_distance){
-		//TODO: Implement algorithm that finds the angle between camera and focus and moves
-		// Camera towards focus object at a rate that will preserve distance
-		set_cam_pos(g_cam_focus->pos_x, g_cam_focus->pos_y);
-		cam_vel.x = 0.0;
-		cam_vel.y = 0.0;
+		// Find angle between camera and focus object
+		double a = calc_angle(g_cam_focus->pos_x, g_cam_focus->pos_y, g_cam_x, g_cam_y, d);
+		// Maintain the same angle, but change the magnitude to exactly g_cam_tether_distance
+		float offset_x = cos(a) * g_cam_tether_distance;
+		float offset_y = sin(a) * g_cam_tether_distance;
+		set_cam_pos(g_cam_focus->pos_x - offset_x, g_cam_focus->pos_y - offset_y);
+		// Set the camera velocity to the focus object's velocity, as if it's being 'dragged'
+		g_cam_vel.x = (g_cam_focus->vel).x;
+		g_cam_vel.y = (g_cam_focus->vel).y;
 	}else{
-		cam_vel.x = 0.0;
-		cam_vel.y = 0.0;
+		// Continue moving, but slow down as the camera continues to approach the object
+		g_cam_vel.x -= g_cam_vel.x * RATE_CAMERA_SLOW * g_delta_t;
+		g_cam_vel.y -= g_cam_vel.y * RATE_CAMERA_SLOW * g_delta_t;
 	}
-	return cam_vel;
+	return g_cam_vel;
 }
 
 // Sets the camera position based on the selected movement type
@@ -92,9 +99,8 @@ void move_camera()
 			set_cam_pos(g_cam_focus->pos_x, g_cam_focus->pos_y);
 			break;
 		case glCamTethered:
-			struct velocity cam_vel;
-			cam_vel = calculate_tether();
-			set_cam_pos(g_cam_x + (cam_vel.x * g_delta_t), g_cam_y + (cam_vel.y * g_delta_t));
+			g_cam_vel = calculate_tether();
+			set_cam_pos(g_cam_x + (g_cam_vel.x * g_delta_t), g_cam_y + (g_cam_vel.y * g_delta_t));
 			break;
 		default:
 			break;
