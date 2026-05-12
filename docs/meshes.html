@@ -40,7 +40,7 @@
 				<h4>meshes/*.glMesh</h4>
 				<h1>glMesh file structure</h1>
 				<h4>A glMesh file defines the vertices of the object in local space, normalized between -1.0 and 1.0, the coordinates that a texture should overlay an object, normalized between 0.0 and 1.0, and the indices that determine the order in which the vertices should be drawn to compose triangles.</h4>
-				<h4>The file can include comments that follow any number of forward slashes, like so "//Comment." Float values that are comma-separated for local space and texture coordinates, and integer values are comma separated for the vertex indices. A semi-colon ';' is used as the delimiter to indicate the beginning of the vertex index list. Vertex coordinates are given in pairs of 2 floats, followed by the matchingpair of texture coordinates. White space is ignored, but a newline indicates that a comment has ended and data should be parsed.</h4>
+				<h4>The file can include comments that follow any number of forward slashes, like so "//Comment." Float values are comma-separated for local space and texture coordinates, and integer values are comma separated for the vertex indices. A semi-colon ';' is used as the delimiter to indicate the beginning of the vertex index list. Vertex coordinates are given in pairs of 2 floats, followed by the matching pair of texture coordinates. White space is ignored, but a newline indicates that a comment has ended and data should be parsed.</h4>
 				<h4>A shape and a mesh only need one instance to be used by any number of objects, as the values inside are not changed after initialization.</h4>
 				<h1>The gl_mesh struct</h1>
 				<h4>gl_mesh holds all of the variables necessary to utilize the mesh.
