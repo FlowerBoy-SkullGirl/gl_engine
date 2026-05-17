@@ -33,6 +33,7 @@
 #define WORLD_SCALE 0.025
 #define BASE_VEL 3.0
 #define RATE_ACCELERATION 0.7
+
 //Allow debugging from attached GDB
 #include <sys/prctl.h>
 void allow_debug()
