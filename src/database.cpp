@@ -2,6 +2,197 @@
 #include <iostream>
 #include <stdlib.h>
 
+#define FILE_IO_BUFFER_SIZE 1
+
+/*
+ * File IO Helper Functions
+ */
+
+// Truncate a file after an offset and return the number of bytes truncated
+off_t truncate_file_after(FILE *fp, off_t offset)
+{
+	// Return early if file pointer is null
+	if (fp == NULL)
+		return 0;
+
+	// Return early if file is already smaller than or equal to requested offset
+	off_t file_size = 0;
+	fseeko(fp, 0, SEEK_END);
+
+	file_size = ftello(fp);
+
+	if (file_size <= offset)
+		return 0;
+
+	// Return file position to offset
+	fseek(fp, offset + 1, SEEK_SET);
+
+	// Find the remaining size that needs to be written
+	off_t truncate_size = file_size - (offset + 1);
+
+	// Fill the remaining space with whitespace characters
+	for(int i = 0; i < truncate_size; i++){
+		fputc(DB_WHITESPACE, fp);
+	}
+
+	return truncate_size;
+}
+
+// Create a temporary file with a specified name and return the file pointer
+FILE *create_temp_file(const char *filen)
+{
+	FILE *fp = fopen(filen, "w+");
+	return fp;
+}
+
+// Delete temp file, must be closed prior
+int remove_temp_file(const char *filen)
+{
+	return remove(filen);
+}
+
+// Write data from first file to second file, starting from first offset to second offset
+// Both file * must point to an open file
+// Return number of bytes written
+off_t f_copy_between(FILE *src, FILE *dest, off_t start, off_t end)
+{
+	// Used to check bounds of file
+	off_t current = 0;
+	off_t sum = 0;
+
+	if (src == NULL || dest == NULL)
+		return 0;
+
+	fseeko(src, 0, SEEK_END);
+	current = ftello(src);
+
+	// Do not write any data if start is past file bounds
+	if (start <= current)
+		return 0;
+
+	// Only write to the end of the file if end is past the file bounds
+	if (end < current)
+		end = current;
+
+	// How many times to iterate loop
+	off_t loop_iterations = (end - start) / FILE_IO_BUFFER_SIZE;
+
+	// How many bytes to read after loop finishes
+	// This value is less than buffer size, so is guaranteed to fit into buffer
+	off_t remainder = (end - start) % FILE_IO_BUFFER_SIZE;
+
+	// Allocate memory for a buffer to read the src file
+	char *buffer = (char *) malloc(FILE_IO_BUFFER_SIZE);
+
+	if (buffer == NULL)
+		return 0;
+	
+	// Set the file position to the start offset
+	fseeko(src, start, SEEK_SET);
+
+	// Begin reading from src and writing to dest
+	for(int i = 0; i < loop_iterations; i++){
+		fread(buffer, FILE_IO_BUFFER_SIZE, 1, src);
+		sum += fwrite(buffer, FILE_IO_BUFFER_SIZE, 1, dest);
+	}
+
+	// Clear buffer
+	memset(buffer, 0, FILE_IO_BUFFER_SIZE);
+
+	// Write the remaining bytes
+	current = fread(buffer, 1, remainder, src);
+	// Too many bytes have been read, abandon
+	if (current != remainder){
+		return sum;
+	}
+
+	sum += fwrite(buffer, 1, remainder, dest);
+
+	// Free buffer memory
+	free(buffer);
+
+	// Return the size of bytes written
+	return sum;
+}
+
+// Replace data in file between two offsets with buffer of specified size, preserve file contents before and after offsets
+// Return number of bytes written
+off_t f_replace_between(FILE *fp, void *data, size_t size, off_t start, off_t end)
+{
+	// Return early if there is nothing to write
+	// f_copy_between will perform other bounds checking for offsets given
+	if (fp == NULL || data == NULL)
+		return 0;
+
+	off_t sum = 0;
+	const char *temp_filen = "database/dbwrite.temp";
+	FILE *temp = create_temp_file(temp_filen);
+
+	// Find end of database file
+	fseeko(fp, 0, SEEK_END);
+	off_t file_size = ftello(fp);
+
+	// Write copy of database file to temp file, excluding the bytes between start and end
+	f_copy_between(fp, temp, 0, start);
+	f_copy_between(fp, temp, end, file_size);
+
+	// Set file position for writing new data
+	fseeko(fp, start + 1, SEEK_SET);
+
+	// Write the data
+	sum = fwrite(data, size, 1, fp);
+
+	// Copy the contents after end back into the file
+	f_copy_between(temp, fp, end, file_size);
+
+	// If file has remaining characters, truncate
+	// File pointer position is currently 1 char after what has been written
+	off_t new_size = ftello(fp);
+	if (new_size > file_size)
+		truncate_file_after(fp, new_size - 1);
+
+	// All file IO has been completed
+	return sum;
+}
+
+// Insert data in a file from a buffer of specified size after the given offset, preserving(do not overwrite) data after the offset
+// Return number of bytes written
+off_t f_insert_after(FILE *fp, void *data, size_t size, off_t offset)
+{
+	// Return early if there is nothing to write
+	// f_copy_between will perform other bounds checking for offsets given
+	if (fp == NULL || data == NULL)
+		return 0;
+
+	off_t sum = 0;
+	const char *temp_filen = "database/dbwrite.temp";
+	FILE *temp = create_temp_file(temp_filen);
+
+	// Find end of database file
+	fseeko(fp, 0, SEEK_END);
+	off_t file_size = ftello(fp);
+
+	// Write copy of database file to temp file
+	f_copy_between(fp, temp, 0, file_size);
+
+	// Set the file position
+	fseeko(fp, offset + 1, SEEK_SET);
+
+	// Write the buffer data
+	sum = fwrite(data, size, 1, fp);
+
+	// Copy the data after offset back from the temp file
+	f_copy_between(temp, fp, offset + 1, file_size);
+
+	// Close the temporary file
+	fclose(temp);
+
+	// Delete the temp file
+	remove_temp_file(temp_filen);
+
+	return sum;
+}
+
 
 /*
  * Database managment

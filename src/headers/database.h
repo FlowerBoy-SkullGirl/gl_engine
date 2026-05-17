@@ -79,6 +79,42 @@ struct table_metadata{
 	int num_cols;
 };
 
+
+/*
+ * File IO Helper Functions
+ */
+
+/* Truncating a file after an offset is very platform dependent
+ * It may be preferable to write a new file with the correct contents
+ * and overwrite the old file, but this requires updating the file *
+ * being used to access the database. That is a valid option, but it may
+ * need to be stored as a global value or as a singleton object in order to
+ * do so effectively and without leaving dangling pointers somewhere.
+ * For now, since whitespace is ignored by the database parsing, we will
+ * fill the remaining space with blank characters
+ */
+// Truncate a file after an offset and return the number of bytes truncated
+off_t truncate_file_after(FILE *, off_t);
+
+// Create a temporary file with a specified name and return the file pointer
+FILE *create_temp_file(const char *);
+
+// Delete temp file, must be closed prior to calling function
+int remove_temp_file(const char *);
+
+// Write data from first file to second file, starting from first offset to second offset
+// Both file * must point to an open file
+// Return number of bytes written
+off_t f_copy_between(FILE *, FILE *, off_t, off_t);
+
+// Replace data in file between two offsets with buffer of specified size, preserve file contents before and after offsets
+// Return number of bytes written
+off_t f_replace_between(FILE *, void *, size_t, off_t, off_t);
+
+// Insert data in a file from a buffer of specified size after the given offset, preserving(do not overwrite) data after the offset
+// Return number of bytes written
+off_t f_insert_after(FILE *, void *, size_t, off_t);
+
 /*
  * Database managment
  */
