@@ -284,6 +284,7 @@ int main()
 	set_cam_pos(0.0f, 0.0f);
 	// Determine how the camera will move in the main loop
 	//set_camera_movement_type(glCamFixed, player_object);
+	init_camera();
 	set_camera_movement_type(glCamTethered, player_object);
 	set_cam_tether_distance(10.0f);
 
