@@ -28,7 +28,8 @@
 #define DB_MAX_TABLES 16
 #define DB_MAX_ROWS 256
 #define DB_MAX_COLS 256
-#define DB_MAX_SIZE_STRING 256
+#define DB_MAX_SIZE_STRING 256 // All strings in row_object are stored as max size and filled with null-terminator characters until end of string
+#define DB_FLOAT_PRECISION 4 // All floats will be stored with 4 digits of precision after the decimal
 /*
  * A table is constrained to size (256 ^ 3)(max string, in max rows, in max columns)
  *                              + 2 (table braces) + 512(row braces) 
@@ -97,7 +98,7 @@ struct table_metadata{
  * fill the remaining space with blank characters
  */
 
-// Helper function for serializing game objects
+// Helper function for serializing objects
 // Takes a pointer to a buffer, a pointer to data to be written, an offset from the start of the buffer, 
 // the size of the object, and the total length of the buffer
 size_t write_to_buffer(char *, char *, size_t, size_t, size_t);
@@ -125,6 +126,17 @@ off_t f_replace_between(FILE *, void *, size_t, off_t, off_t, DBenum);
 off_t f_insert_after(FILE *, void *, size_t, off_t);
 
 int num_digits_int(int x);
+
+/*
+ * Serialization
+ */ 
+// Take a row_object struct and convert it to a null-terminated delimited string
+// Allocates memory for the string
+char *serial_to_string(struct row_object *);
+
+// Take a delimited string and convert it to a row_object struct
+// Allocates memory for the row_object
+struct row_object *string_to_serial(char *);
 
 /*
  * Database managment

@@ -239,6 +239,143 @@ int num_digits_int(int x)
 	return digits;
 }
 
+/*
+ * Serialization
+ */ 
+// Take a row_object struct and convert it to a null-terminated delimited string
+// Allocates memory for the string
+char *serial_to_string(struct row_object *ro)
+{
+	// Tracks the offset of the data_list where the next element is to be read
+	size_t offset = 0;
+	size_t buffer_size = 0;
+	size_t chars_written = 0;
+
+	// Data type sizes
+	size_t size_int = sizeof(int);
+	size_t size_float = sizeof(float);
+
+	// Pointers used to manipulate the row object buffer
+	char *char_pointer = ro->data_list;
+	int *int_pointer;
+	float *float_pointer;
+	char *str_poitner;
+
+	// String where the serialized data will be stored, this value will be returned
+	char *buffer = NULL;
+
+	// Find the size needed to hold the new string
+	for (int i = 0; i < ro->column_count; i++){
+		switch (*((ro)->data_type_list + i)){
+			case DB_INT:
+				// Use an integer pointer at the address of the next element
+				int_pointer = (int *) (char_pointer + offset);
+
+				// Find the number of digits of that integer
+				buffer_size += num_digits_int(*int_pointer);
+
+				// Increment the offset where the next element is found
+				offset += size_int;
+				break;
+			case DB_FLOAT:
+				// Use a float pointer at the address of the next element
+				float_pointer = (float *) (char_pointer + offset);
+
+				// Cast the float as an integer to determine how many digits precede the decimal point
+				int x = *float_pointer;
+
+				// Find the number of digits for the cast integer + 1 for a decimal character + number of digits of precision
+				buffer_size += num_digits_int(x) + 1 + DB_FLOAT_PRECISION;
+
+				// Increment the offset where the next element is found
+				offset += size_float;
+				break;
+			// All strings are stored as max size and filled with null-terminator characters until end of string
+			case DB_STRING:
+				// For ease of use, address a second char pointer at the beginning of the string
+				str_pointer = (char_pointer + offset);
+				// Find the length of the string up to the first null terminator, or return max size if no null-terminator is found
+				buffer_size += strlen_s(str_pointer, MAX_STRING_SIZE);
+
+				// Increment the offset where the next element is found
+				offset += MAX_SIZE_STRING;
+				break;
+			default
+				break;
+
+		}
+	}
+
+	// Allocate memory for the buffer, with an additional byte for each delimiter(column-count - 1, since the last element will not have a delimiter)
+	// and an additional byte for the null-terminator
+	buffer_size += (ro->column_count);
+	buffer = (char *) malloc(buffer_size);
+	
+	// Reset offset
+	offset = 0;
+
+	// Read data into string
+	for (int i = 0; i < ro->column_count; i++){
+		switch (*((ro)->data_type_list + i)){
+			case DB_INT:
+				// Use an integer pointer at the address of the next element
+				int_pointer = (int *) (char_pointer + offset);
+
+				// Write the integer to the string at the correct offset
+				snprintf(buffer + chars_written, buffer_size - chars_written, "%d", (*int_pointer));
+				
+				// Increment the number of characters written
+				chars_written += num_digits_int(*int_pointer);
+				// Increment the offset where the next element is found
+				offset += size_int;
+				break;
+			case DB_FLOAT:
+				// Use a float pointer at the address of the next element
+				float_pointer = (float *) (char_pointer + offset);
+
+				// Write the float to the string at the correct offset, with DB_FLOAT_PRECISION decimal places
+				snprintf(buffer + chars_written, buffer_size - chars_written, "%.*f", DB_FLOAT_PRECISION, (*float_pointer));
+				// Increment the number of characters written
+				int x = *float_pointer;
+				chars_written += num_digits_int(x) + 1 + DB_FLOAT_PRECISION;
+				// Increment the offset where the next element is found
+				offset += size_float;
+				break;
+			// All strings are stored as max size and filled with null-terminator characters until end of string
+			case DB_STRING:
+				// For ease of use, address a second char pointer at the beginning of the string
+				str_pointer = (char_pointer + offset);
+				// Find the length of the string up to the first null terminator, or return max size if no null-terminator is found
+				size_t str_size = strlen_s(str_pointer, MAX_STRING_SIZE);
+				// Write the integer to the string at the correct offset
+				snprintf(buffer + chars_written, buffer_size - chars_written, "%s", str_pointer);
+
+				// Increment the offset where the next element is found
+				chars_written += str_size;
+				offset += MAX_SIZE_STRING;
+				break;
+			default
+				break;
+
+		}
+		// For each element except the last, write a delimiter to the string
+		if (i + 1 == (ro->column_count))
+			continue;
+		*(buffer + chars_written) = DB_DELIMITER;
+		char_written += 1;
+	}
+	// Null terminate the string
+	*(buffer + chars_written) = '\0';
+
+	return buffer;
+}
+
+// Take a delimited string and convert it to a row_object struct
+// Allocates memory for the row_object
+struct row_object *string_to_serial(char *src)
+{
+	return NULL;
+}
 
 /*
  * Database managment
