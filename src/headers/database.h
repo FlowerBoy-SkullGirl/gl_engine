@@ -57,6 +57,9 @@ struct gl_db{
 // An enum for allowed data types in the database
 enum DB_TYPES {DB_INT, DB_FLOAT, DB_STRING};
 
+// An enum for flag values
+enum DBenum {DB_IO_NO_OVERWRITE, DB_IO_OVERWRITE};
+
 // Abstract serialization of object data into a database row
 // Implementation of moving data into the struct will be up to the program using the API
 struct row_object{
@@ -109,11 +112,13 @@ off_t f_copy_between(FILE *, FILE *, off_t, off_t);
 
 // Replace data in file between two offsets with buffer of specified size, preserve file contents before and after offsets
 // Return number of bytes written
-off_t f_replace_between(FILE *, void *, size_t, off_t, off_t);
+off_t f_replace_between(FILE *, void *, size_t, off_t, off_t, DBenum);
 
 // Insert data in a file from a buffer of specified size after the given offset, preserving(do not overwrite) data after the offset
 // Return number of bytes written
 off_t f_insert_after(FILE *, void *, size_t, off_t);
+
+int num_digits_int(int x);
 
 /*
  * Database managment
@@ -134,7 +139,7 @@ int delete_database(const char *);
 struct database_metadata get_database_metadata(struct gl_db *);
 
 // Write the number of tables and table id count into the database file
-int write_database_metadata(struct database_metadata, struct gl_db *db)
+int write_database_metadata(struct database_metadata, struct gl_db *db);
 
 /*
  *Table management
