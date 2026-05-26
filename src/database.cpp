@@ -242,7 +242,31 @@ int num_digits_int(int x)
 /*
  * Serialization
  */ 
-// Take a row_object struct and convert it to a null-terminated delimited string
+
+// Takes a data type list and number of elements argument and converts it to a null-terminated, delimited string
+// Allocates memory for the string
+char *type_list_to_string(enum DB_TYPES *type_list, int elements)
+{
+	// Allocate a string that can hold each 1-digit element, a 1-char delimiter for each element except the last, and the 1-byte null terminator
+	size_t buffer_size = elements * 2;
+	char *buffer = (char *) malloc(buffer_size);
+
+	// For each element of type_list, write the element to the string
+	for (int i = 0; i < elements; i++){
+		snprintf(buffer + (i*2), buffer_size - (i*2), "%1d", *(type_list + i));
+		// If it is the last element, continue
+		if (i + 1 == elements)
+			continue;
+		// Otherwise, write the delimiter character
+		*(buffer + (i*2) + 1) = DB_DELIMITER;
+	}
+	// Write the null terminator at the last byte
+	*(buffer + buffer_size - 1) = '\0';
+
+	return buffer;
+}
+
+// Take a row_object struct and convert it to a null-terminated, delimited string
 // Allocates memory for the string
 char *serial_to_string(struct row_object *ro)
 {
@@ -411,6 +435,7 @@ struct row_object *string_to_serial(char *data_string, char *types_string)
 	}
 
 	// Iterate the newly formed data_type_list and determine the size in bytes of the data_list
+	ro->data_list_size = 0;
 	for (int i = 0; i < ro->column_count; i++){
 		switch(*((ro->data_type_list) + i)){
 			case DB_INT:
@@ -427,11 +452,16 @@ struct row_object *string_to_serial(char *data_string, char *types_string)
 		}
 	}
 
+	// Allocate the appropriate memory for the data_list
+	ro->data_list = malloc((ro->data_list_size));
+
 	// Read data from the data_string into the data_list
 	size_t len_data_string = strlen(data_string);
 
 	size_t data_list_offset = 0;
 	size_t data_string_offset = 0;
+
+	char *char_pointer = (char *)(ro->data_list);
 	int *int_pointer = NULL;
 	float *float_pointer = NULL;
 	char *str_pointer = NULL;
@@ -440,21 +470,21 @@ struct row_object *string_to_serial(char *data_string, char *types_string)
 		switch(*((ro->data_type_list) + i)){
 			case DB_INT:
 				// Read an int into the data_list
-				int_pointer = (int *) ((ro->data_list) + data_list_offset);
+				int_pointer = (int *) (char_pointer + data_list_offset);
 				sscanf((data_string + data_string_offset), "%d", int_pointer);
 				// Increment the data_list_offset by size of int
 				data_list_offset += size_int;
 				break;
 			case DB_FLOAT:
 				// Read a float into the data_list
-				float_pointer = (float *) ((ro->data_list) + data_list_offset);
+				float_pointer = (float *) (char_pointer + data_list_offset);
 				sscanf((data_string + data_string_offset), "%f", float_pointer);
 				// Increment the data_list_offset by size of float
 				data_list_offset += size_float;
 				break;
 			case DB_STRING:
 				// Fill the space allotted to the string with null characters
-				str_pointer = ((ro->data_list) + data_list_offset);
+				str_pointer = (char_pointer + data_list_offset);
 				memset(str_pointer, '\0', DB_MAX_SIZE_STRING);
 				// Copy each character from the current position in data_string_offset up to the next delimiter
 				for (int j = data_string_offset; j < (len_data_string - data_string_offset); j++){
@@ -471,9 +501,11 @@ struct row_object *string_to_serial(char *data_string, char *types_string)
 		if (i + 1 == (ro->column_count))
 			continue;
 		// Otherwise, find the next delimiter and increment the data_string_offset past it
-		for (int j = data_string_offset; j < (len_data_string - data_string_offset); j++){
-			if (*(data_string + j) == DB_DELIMITER)
+		for (int j = data_string_offset; j < len_data_string; j++){
+			if (*(data_string + j) == DB_DELIMITER){
 				data_string_offset = j + 1;
+				break;
+			}
 		}
 	}
 

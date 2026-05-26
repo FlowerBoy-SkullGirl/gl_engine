@@ -136,6 +136,10 @@ int num_digits_int(int x);
 /*
  * Serialization
  */ 
+// Takes a data type list and number of elements argument and converts it to a null-terminated, delimited string
+// Allocates memory for the string
+char *type_list_to_string(enum DB_TYPES *type_list, int);
+
 // Take a row_object struct and convert it to a null-terminated delimited string
 // Allocates memory for the string
 char *serial_to_string(struct row_object *);

@@ -378,6 +378,22 @@ int main()
 	char *serial_string = serial_to_string(ro);
 	printf("Serial string: %s\n", serial_string);
 
+	char *data_type_list_str = type_list_to_string(ro->data_type_list, ro->column_count);
+
+	free_serialized_data(ro);
+	ro = NULL;
+
+	ro = string_to_serial(serial_string, data_type_list_str);
+
+	free(serial_string);
+	serial_string = NULL;
+
+	free(data_type_list_str);
+	data_type_list_str = NULL;
+
+	serial_string = serial_to_string(ro);
+	printf("Serial string double converted: %s\n", serial_string);
+
 	free_serialized_data(ro);
 	free(serial_string);
 
