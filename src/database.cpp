@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <cstddef>
-#include <cstring>
+#include "string.h"
 #include <cstdio>
 #include "headers/database.h"
 
@@ -256,15 +256,16 @@ char *serial_to_string(struct row_object *ro)
 	size_t size_float = sizeof(float);
 
 	// Pointers used to manipulate the row object buffer
-	char *char_pointer = ro->data_list;
-	int *int_pointer;
-	float *float_pointer;
-	char *str_poitner;
+	char *char_pointer = (char *) ro->data_list;
+	int *int_pointer = NULL;
+	float *float_pointer = NULL;
+	char *str_pointer = NULL;
 
 	// String where the serialized data will be stored, this value will be returned
 	char *buffer = NULL;
 
 	// Find the size needed to hold the new string
+	int x = 0;
 	for (int i = 0; i < ro->column_count; i++){
 		switch (*((ro)->data_type_list + i)){
 			case DB_INT:
@@ -282,7 +283,7 @@ char *serial_to_string(struct row_object *ro)
 				float_pointer = (float *) (char_pointer + offset);
 
 				// Cast the float as an integer to determine how many digits precede the decimal point
-				int x = *float_pointer;
+				x = *float_pointer;
 
 				// Find the number of digits for the cast integer + 1 for a decimal character + number of digits of precision
 				buffer_size += num_digits_int(x) + 1 + DB_FLOAT_PRECISION;
@@ -294,13 +295,13 @@ char *serial_to_string(struct row_object *ro)
 			case DB_STRING:
 				// For ease of use, address a second char pointer at the beginning of the string
 				str_pointer = (char_pointer + offset);
-				// Find the length of the string up to the first null terminator, or return max size if no null-terminator is found
-				buffer_size += strlen_s(str_pointer, MAX_STRING_SIZE);
+				// Find the length of the string up to the first null terminator
+				buffer_size += strlen(str_pointer);
 
 				// Increment the offset where the next element is found
-				offset += MAX_SIZE_STRING;
+				offset += DB_MAX_SIZE_STRING;
 				break;
-			default
+			default:
 				break;
 
 		}
@@ -315,6 +316,7 @@ char *serial_to_string(struct row_object *ro)
 	offset = 0;
 
 	// Read data into string
+	size_t str_size = 0;
 	for (int i = 0; i < ro->column_count; i++){
 		switch (*((ro)->data_type_list + i)){
 			case DB_INT:
@@ -336,7 +338,7 @@ char *serial_to_string(struct row_object *ro)
 				// Write the float to the string at the correct offset, with DB_FLOAT_PRECISION decimal places
 				snprintf(buffer + chars_written, buffer_size - chars_written, "%.*f", DB_FLOAT_PRECISION, (*float_pointer));
 				// Increment the number of characters written
-				int x = *float_pointer;
+				x = *float_pointer;
 				chars_written += num_digits_int(x) + 1 + DB_FLOAT_PRECISION;
 				// Increment the offset where the next element is found
 				offset += size_float;
@@ -345,16 +347,16 @@ char *serial_to_string(struct row_object *ro)
 			case DB_STRING:
 				// For ease of use, address a second char pointer at the beginning of the string
 				str_pointer = (char_pointer + offset);
-				// Find the length of the string up to the first null terminator, or return max size if no null-terminator is found
-				size_t str_size = strlen_s(str_pointer, MAX_STRING_SIZE);
+				// Find the length of the string up to the first null terminator
+				str_size = strlen(str_pointer);
 				// Write the integer to the string at the correct offset
 				snprintf(buffer + chars_written, buffer_size - chars_written, "%s", str_pointer);
 
 				// Increment the offset where the next element is found
 				chars_written += str_size;
-				offset += MAX_SIZE_STRING;
+				offset += DB_MAX_SIZE_STRING;
 				break;
-			default
+			default:
 				break;
 
 		}
@@ -362,7 +364,7 @@ char *serial_to_string(struct row_object *ro)
 		if (i + 1 == (ro->column_count))
 			continue;
 		*(buffer + chars_written) = DB_DELIMITER;
-		char_written += 1;
+		chars_written += 1;
 	}
 	// Null terminate the string
 	*(buffer + chars_written) = '\0';
@@ -371,9 +373,130 @@ char *serial_to_string(struct row_object *ro)
 }
 
 // Take a delimited string and convert it to a row_object struct
+// Expects null-terminated strings
 // Allocates memory for the row_object
-struct row_object *string_to_serial(char *src)
+struct row_object *string_to_serial(char *data_string, char *types_string)
 {
+	// Allocate memory for the struct
+	struct row_object *ro = (struct row_object *) malloc(sizeof(struct row_object));
+
+	// Data type sizes
+	size_t size_int = sizeof(int);
+	size_t size_float = sizeof(float);
+
+	// Find the number of elements in the list, strings should be null-terminated
+	ro->column_count = 0;
+
+	size_t len_types_string = strlen(types_string);
+	// If first character is not the null-terminator, there is at least 1 element
+	if (len_types_string > 0)
+		(ro->column_count) += 1;
+
+	// DB_TYPES is never greater than 1 digit, see database.h definition
+	// There is an additional element for each delimiter found
+	for (int i = 0; i < len_types_string; i++){
+		if (*(types_string + i) == DB_DELIMITER)
+			(ro->column_count) += 1;
+	}
+
+	// Allocate appropriate memory for data_type_list based off of number of elements found
+	(ro->data_type_list) = (enum DB_TYPES *) malloc(sizeof(enum DB_TYPES) * (ro->column_count));
+
+	// Read values from the string into the data_type_list
+	// Each 1-byte width element in the string will be followed by a 1-byte delimiter
+	// Read 1 char as an integer into the type list, then increment the offset by 2
+	// The type list index will always be offset / 2
+	for (int i = 0; i < len_types_string; i += 2){
+		sscanf((types_string + i), "%1d", ((ro->data_type_list) + (i / 2)));
+	}
+
+	// Iterate the newly formed data_type_list and determine the size in bytes of the data_list
+	for (int i = 0; i < ro->column_count; i++){
+		switch(*((ro->data_type_list) + i)){
+			case DB_INT:
+				(ro->data_list_size) += size_int;
+				break;
+			case DB_FLOAT:
+				(ro->data_list_size) += size_float;
+				break;
+			case DB_STRING:
+				break;
+				(ro->data_list_size) += DB_MAX_SIZE_STRING;
+			default:
+				break;
+		}
+	}
+
+	// Read data from the data_string into the data_list
+	size_t len_data_string = strlen(data_string);
+
+	size_t data_list_offset = 0;
+	size_t data_string_offset = 0;
+	int *int_pointer = NULL;
+	float *float_pointer = NULL;
+	char *str_pointer = NULL;
+
+	for (int i = 0; i < ro->column_count; i++){
+		switch(*((ro->data_type_list) + i)){
+			case DB_INT:
+				// Read an int into the data_list
+				int_pointer = (int *) ((ro->data_list) + data_list_offset);
+				sscanf((data_string + data_string_offset), "%d", int_pointer);
+				// Increment the data_list_offset by size of int
+				data_list_offset += size_int;
+				break;
+			case DB_FLOAT:
+				// Read a float into the data_list
+				float_pointer = (float *) ((ro->data_list) + data_list_offset);
+				sscanf((data_string + data_string_offset), "%f", float_pointer);
+				// Increment the data_list_offset by size of float
+				data_list_offset += size_float;
+				break;
+			case DB_STRING:
+				// Fill the space allotted to the string with null characters
+				str_pointer = ((ro->data_list) + data_list_offset);
+				memset(str_pointer, '\0', DB_MAX_SIZE_STRING);
+				// Copy each character from the current position in data_string_offset up to the next delimiter
+				for (int j = data_string_offset; j < (len_data_string - data_string_offset); j++){
+					if (*(data_string + j) == DB_DELIMITER)
+						break;
+					*(str_pointer + j) = *(data_string + j);
+				}
+				data_list_offset += DB_MAX_SIZE_STRING;
+				break;
+			default:
+				break;
+		}
+		// If this is the last element, there will not be an additional delimiter
+		if (i + 1 == (ro->column_count))
+			continue;
+		// Otherwise, find the next delimiter and increment the data_string_offset past it
+		for (int j = data_string_offset; j < (len_data_string - data_string_offset); j++){
+			if (*(data_string + j) == DB_DELIMITER)
+				data_string_offset = j + 1;
+		}
+	}
+
+	return ro;
+}
+
+// Checks that all members of the struct have been freed, then frees the memory for the struct
+// Returns null
+struct row_object *free_serialized_data(struct row_object *ro)
+{
+	if(ro == NULL)
+		return NULL;
+	if(ro->data_list != NULL){
+		free(ro->data_list);
+		ro->data_list == NULL;
+	}
+	if(ro->data_type_list != NULL){
+		free(ro->data_type_list);
+		ro->data_type_list == NULL;
+	}
+
+	free(ro);
+	ro = NULL;
 	return NULL;
 }
 

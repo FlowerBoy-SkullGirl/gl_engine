@@ -5,6 +5,7 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
+#include "headers/database.h"
 #include "headers/shapes.h"
 #include "headers/shaders.h"
 #include "headers/buffers.h"
@@ -371,6 +372,14 @@ int main()
 		bind_array(0);
 	}
 
+
+	// Testing serialization
+	struct row_object *ro = serialize_game_object(player_object);
+	char *serial_string = serial_to_string(ro);
+	printf("Serial string: %s\n", serial_string);
+
+	free_serialized_data(ro);
+	free(serial_string);
 
 	/* CLEAN UP */
 	glDeleteProgram(shader1);

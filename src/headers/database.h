@@ -55,8 +55,14 @@ struct gl_db{
 	FILE *db_file;
 };
 
+/*
+ * CURRENT LIMITATIONS:
+ * DB_STRING cannot hold strings that contain any values that act as delimiters or boundary markers in the database
+ */
+
 // An enum for allowed data types in the database
-enum DB_TYPES {DB_INT, DB_FLOAT, DB_STRING};
+// Limit to at most 10 data types, so that the number of digits used to represent the enum is never greater than 1
+enum DB_TYPES {DB_INT, DB_FLOAT, DB_STRING, DB_RESERVED3, DB_RESERVED4, DB_RESERVED5, DB_RESERVED6, DB_RESERVED7, DB_RESERVED8, DB_RESERVED9, DB_LAST_TYPE};
 
 // An enum for flag values
 enum DBenum {DB_IO_NO_OVERWRITE, DB_IO_OVERWRITE};
@@ -134,9 +140,13 @@ int num_digits_int(int x);
 // Allocates memory for the string
 char *serial_to_string(struct row_object *);
 
-// Take a delimited string and convert it to a row_object struct
+// Take a delimited string of data and a delimited string enumerating data types and convert it to a row_object struct
+// Expects null-terminated strings
 // Allocates memory for the row_object
-struct row_object *string_to_serial(char *);
+struct row_object *string_to_serial(char *, char *);
+
+// Free serialized data
+struct row_object *free_serialized_data(struct row_object *);
 
 /*
  * Database managment

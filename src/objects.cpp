@@ -18,9 +18,9 @@
 
 #define DEFAULT_R_MOMENTUM 0.7
 
-#define SERIAL_NUM_INTS = 1;
-#define SERIAL_NUM_FLOATS = 5;
-#define SERIAL_NUM_STRINGS = 0;
+#define SERIAL_NUM_INTS 1
+#define SERIAL_NUM_FLOATS 5
+#define SERIAL_NUM_STRINGS 0
 
 // Allocates memory for a game_object with malloc, must be freed with free_game_object()
 struct game_object *init_game_object()
@@ -190,13 +190,13 @@ struct row_object *serialize_game_object(struct game_object *op)
 
 	// Iterate through the data type list, first adding integers, then floats, then strings
 	int i = 0;
-	for(; i < column_count ; i++){
+	for(; i < ro->column_count ; i++){
 		if (i < SERIAL_NUM_INTS)
-			*(ro->data_type_list) = DB_INT;
+			*((ro->data_type_list) + i) = DB_INT;
 		if (i >= SERIAL_NUM_INTS && i < SERIAL_NUM_INTS + SERIAL_NUM_FLOATS)
-			*(ro->data_type_list) = DB_FLOAT;
+			*((ro->data_type_list) + i) = DB_FLOAT;
 		if (i >= SERIAL_NUM_INTS + SERIAL_NUM_FLOATS)
-			*(ro->data_type_list) = DB_STRING;
+			*((ro->data_type_list) + i) = DB_STRING;
 	}
 
 	// Allocate the proper amount of memory for the data_list
@@ -230,10 +230,10 @@ struct row_object *serialize_game_object(struct game_object *op)
 	if (op->mesh->num_indices == 3)
 		object_mesh = TriangleGLMesh;
 	if (op->mesh->num_indices == 6)
-		object_mesh = SquareGLMeshGLMesh;
+		object_mesh = SquareGLMesh;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(dp, &object_mesh, offset, int_size, ro->data_list_size);
+	return_check = write_to_buffer(dp, (char *)&object_mesh, offset, int_size, ro->data_list_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -242,7 +242,7 @@ struct row_object *serialize_game_object(struct game_object *op)
 	offset += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(dp, &(op->rotation), offset, float_size, ro->data_list_size);
+	return_check = write_to_buffer(dp, (char *)&(op->rotation), offset, float_size, ro->data_list_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -251,7 +251,7 @@ struct row_object *serialize_game_object(struct game_object *op)
 	offset += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(dp, &(op->pos_x), offset, float_size, ro->data_list_size);
+	return_check = write_to_buffer(dp, (char *)&(op->pos_x), offset, float_size, ro->data_list_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -260,7 +260,7 @@ struct row_object *serialize_game_object(struct game_object *op)
 	offset += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(dp, &(op->pos_y), offset, float_size, ro->data_list_size);
+	return_check = write_to_buffer(dp, (char *)&(op->pos_y), offset, float_size, ro->data_list_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -269,7 +269,7 @@ struct row_object *serialize_game_object(struct game_object *op)
 	offset += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(dp, &(op->scale_x), offset, float_size, ro->data_list_size);
+	return_check = write_to_buffer(dp, (char *)&(op->scale_x), offset, float_size, ro->data_list_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -278,7 +278,7 @@ struct row_object *serialize_game_object(struct game_object *op)
 	offset += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(dp, &(op->scale_y), offset, float_size, ro->data_list_size);
+	return_check = write_to_buffer(dp, (char *)&(op->scale_y), offset, float_size, ro->data_list_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -306,13 +306,13 @@ struct game_object *deserialize_game_object(struct row_object *ro)
 	for (int i = 0; i < ro->column_count; i++)
 	{
 		if (i < SERIAL_NUM_INTS)
-			if(ro->data_type_list != DB_INT)
+			if(*((ro->data_type_list) + i) != DB_INT)
 				return NULL;
 		if (i >= SERIAL_NUM_INTS && i < SERIAL_NUM_INTS + SERIAL_NUM_FLOATS)
-			if(ro->data_type_list != DB_FLOAT)
+			if(*((ro->data_type_list) + i) != DB_FLOAT)
 				return NULL;
 		if (i >= SERIAL_NUM_INTS + SERIAL_NUM_FLOATS)
-			if(ro->data_type_list != DB_STRING)
+			if(*((ro->data_type_list) + i) != DB_STRING)
 				return NULL;
 	}
 	
@@ -320,13 +320,17 @@ struct game_object *deserialize_game_object(struct row_object *ro)
 	struct game_object *op = init_game_object();
 
 	// Read data from data_list heap into game_object variables
-	char *dp = ro->data_list;
+	char *dp = (char *) ro->data_list;
 	size_t offset = 0;
+	size_t return_check = 0;
+
+	size_t int_size = sizeof(int);
+	size_t float_size = sizeof(float);
 
 	// First data is the mesh type
 	enum GL_MeshType object_mesh;
 	// Call helper function to write data
-	return_check = write_to_buffer(&mesh_object, dp, offset, int_size, int_size);
+	return_check = write_to_buffer((char *)(&object_mesh), dp, offset, int_size, int_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -335,7 +339,7 @@ struct game_object *deserialize_game_object(struct row_object *ro)
 	dp += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(&(op->rotation), dp, offset, float_size, float_size);
+	return_check = write_to_buffer((char *)&(op->rotation), dp, offset, float_size, float_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -344,7 +348,7 @@ struct game_object *deserialize_game_object(struct row_object *ro)
 	dp += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(&(op->pos_x), dp, offset, float_size, float_size);
+	return_check = write_to_buffer((char *)&(op->pos_x), dp, offset, float_size, float_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -353,7 +357,7 @@ struct game_object *deserialize_game_object(struct row_object *ro)
 	dp += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(&(op->pos_y), dp, offset, float_size, float_size);
+	return_check = write_to_buffer((char *)&(op->pos_y), dp, offset, float_size, float_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -362,7 +366,7 @@ struct game_object *deserialize_game_object(struct row_object *ro)
 	dp += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(&(op->scale_x), dp, offset, float_size, float_size);
+	return_check = write_to_buffer((char *)&(op->scale_x), dp, offset, float_size, float_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -371,7 +375,7 @@ struct game_object *deserialize_game_object(struct row_object *ro)
 	dp += return_check;
 
 	// Call helper function to write data
-	return_check = write_to_buffer(&(op->scale_y), dp, offset, float_size, float_size);
+	return_check = write_to_buffer((char *)&(op->scale_y), dp, offset, float_size, float_size);
 	if(!return_check){
 		free_serialized_data(ro);
 		return NULL;
@@ -381,24 +385,4 @@ struct game_object *deserialize_game_object(struct row_object *ro)
 
 	// All variables have been read into the object
 	return op;
-}
-
-// Checks that all members of the struct have been freed, then frees the memory for the struct
-// Returns null
-struct row_object *free_serialized_data(struct row_object *ro)
-{
-	if(ro == NULL)
-		return NULL;
-	if(ro->data_list != NULL){
-		free(ro->data_list);
-		ro->data_list == NULL;
-	}
-	if(ro->data_type_list != NULL){
-		free(ro->data_type_list);
-		ro->data_type_list == NULL;
-	}
-
-	free(ro);
-	ro = NULL;
-	return NULL;
 }

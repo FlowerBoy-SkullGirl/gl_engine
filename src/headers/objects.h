@@ -67,7 +67,4 @@ struct row_object *serialize_game_object(struct game_object *);
 // Allocates memory for a game object, which can be freed using free_game_object()
 struct game_object *deserialize_game_object(struct row_object *);
 
-// Free serialized data
-struct row_object *free_serialized_data(struct row_object *);
-
 #endif
