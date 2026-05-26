@@ -59,11 +59,6 @@ int add_object_hitbox(struct game_object *, struct gl_hitbox *);
 // Draw function
 void draw_game_object(struct game_object *, unsigned int);
 
-// Helper function for serializing game objects
-// Takes a pointer to a buffer, a pointer to data to be written, an offset from the start of the buffer, 
-// the size of the object, and the total length of the buffer
-size_t write_to_buffer(char *, char *, size_t, size_t, size_t);
-
 // Serialize into database object
 // Allocates memory, so a call to free_serialized_data() must be made afterwards
 struct row_object *serialize_game_object(struct game_object *);

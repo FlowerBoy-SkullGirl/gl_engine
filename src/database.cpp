@@ -11,6 +11,16 @@
  * File IO Helper Functions
  */
 
+// Write data into a buffer, checking if the specified size and offset will write outside of the bounds of the buffer
+// size_t is unsigned, so we do not worry about negative offset or obj size arguments
+size_t write_to_buffer(char *buffer, char *data, size_t offset, size_t size_obj, size_t buf_len)
+{
+	if (offset + size_obj > buf_len)
+		return 0;
+	memcpy(buffer + offset, data, size_obj);
+	return size_obj;
+}
+
 // Truncate a file after an offset and return the number of bytes truncated
 off_t truncate_file_after(FILE *fp, off_t offset)
 {

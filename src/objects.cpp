@@ -170,16 +170,6 @@ void draw_game_object(struct game_object *op, unsigned int shader)
 	glDrawElements(GL_TRIANGLES, (op->mesh)->num_indices, GL_UNSIGNED_INT, 0);
 }
 
-// Write data into a buffer, checking if the specified size and offset will write outside of the bounds of the buffer
-// size_t is unsigned, so we do not worry about negative offset or obj size arguments
-size_t write_to_buffer(char *buffer, char *data, size_t offset, size_t size_obj, size_t buf_len)
-{
-	if (offset + size_obj > buf_len)
-		return 0;
-	memcpy(buffer + offset, data, size_obj);
-	return size_obj;
-}
-
 // Take all relevant values within the game object and serialize them into a non-typed array of data
 // Adhering to struct row_object specifications
 struct row_object *serialize_game_object(struct game_object *op)
