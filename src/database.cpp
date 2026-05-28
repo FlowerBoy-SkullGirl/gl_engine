@@ -564,8 +564,9 @@ struct gl_db *create_database(const char *filen)
 	size_t num_elements = 3;
 	// An empty database will contain metadata: number of tables, and count of used table id's
 	// Build metadata string
-	char *metadata_string = (char *) malloc(char_size * num_elements);
-	snprintf(metadata_string, char_size * num_elements, "%c%c%c", start_index_char, delimiter_char, start_index_char);
+	// Add one character for null terminated string
+	char *metadata_string = (char *) malloc(char_size * (num_elements + 1));
+	snprintf(metadata_string, char_size * (num_elements + 1), "%c%c%c", start_index_char, delimiter_char, start_index_char);
 	// Write string to file
 	fwrite(metadata_string, char_size, num_elements, fp);
 	
@@ -736,7 +737,10 @@ int write_database_metadata(struct database_metadata db_md, struct gl_db *db)
 	}
 	table_start_pos = ftello(fp);
 	// Decrement table_start_pos due to ftell giving the position after the fgetc has been called
-	table_start_pos -= 1;
+	// If there is no table, start_pos will already be at EOF, so do not decrement
+	if (c != EOF)
+		table_start_pos -= 1;
+	
 
 	// Write string buffer to file
 	// Decrement table_start_pos since overwrite flag is set
@@ -758,6 +762,7 @@ int add_table_to_db(const char *name, struct gl_db *db)
 {
 	char delimiter_char = DB_DELIMITER;
 	char table_start_char = DB_TABLE_START;
+	char table_end_char = DB_TABLE_END;
 	char row_start_char = DB_ROW_START;
 	char row_end_char = DB_ROW_END;
 
@@ -786,11 +791,13 @@ int add_table_to_db(const char *name, struct gl_db *db)
 	if(write_database_metadata(db_md, db))
 		return 1;
 
+	// Writing metadata may have moved file position cursor
+	fseeko(fp, 0, SEEK_END);
 	// Write the table start character
 	fwrite(&table_start_char, char_size, 1,fp);
 
 	// Write the table's id, row id count, row count, column count, and name
-	fprintf(fp, "%d,%d,%d,%d,%s,", db_md.newest_table_id, 0, 0, 0, name);
+	fprintf(fp, "%d,%d,%d,%d,%s", db_md.newest_table_id, 0, 0, 0, name);
 
 	// Write the row start and end delimiters for the column name list
 	fwrite(&delimiter_char, char_size, 1,fp);
@@ -801,6 +808,7 @@ int add_table_to_db(const char *name, struct gl_db *db)
 	fwrite(&delimiter_char, char_size, 1,fp);
 	fwrite(&row_start_char, char_size, 1,fp);
 	fwrite(&row_end_char, char_size, 1,fp);
+	fwrite(&table_end_char, char_size, 1, fp);
 
 	// Each table has a default 'id' column with type DB_INT
 	add_column_to_table(DB_KEY_NAME, DB_INT, db_md.newest_table_id, db);
@@ -808,7 +816,193 @@ int add_table_to_db(const char *name, struct gl_db *db)
 	return 0;
 }
 
-//TODO: Write/get table_metadata
+// Take an id integer and a database and return the position of the desired table
+off_t find_table_by_id(int id, struct gl_db *db)
+{
+	char table_start_char = DB_TABLE_START;
+	char table_end_char = DB_TABLE_END;
+	char row_start_char = DB_ROW_START;
+	char row_end_char = DB_ROW_END;
+	char delimiter_char = DB_DELIMITER;
+	off_t table_pos = 0;
+	int current_id = 0;
+	char c;
+
+	FILE *fp = db->db_file;
+
+	// Determine size of buffer needed to hold table id integer as a string
+	struct database_metadata db_md = get_database_metadata(db);
+	// Add one for the null terminator character
+	size_t buffer_size = num_digits_int(db_md.newest_table_id) + 1;
+	
+	// Allocate a string buffer to read in the table id's
+	char *buffer = (char *) malloc(buffer_size);
+	size_t buffer_offset = 0;
+
+	int depth = DB_TABLE_DEPTH;
+
+	// Seek to the beginning of the file so we are at depth 0(not inside a container)
+	fseeko(fp, 0, SEEK_SET);
+	// Iterate through the file until a table start delimiter is found
+	while((c = fgetc(fp)) != EOF){
+		if (c == table_start_char){
+			// Record the position, back one character due to fgetc advancing the position
+			table_pos = ftello(fp) - 1;
+			// Determine if this table has the desired id
+			while ((c = fgetc(fp)) != EOF){
+				// We have written more characters than our expected max size
+				if (buffer_offset >= buffer_size)
+					break;
+				// We have reached the end of the id field
+				if (c == delimiter_char){
+					*(buffer + buffer_offset) = '\0';
+					break;
+				}
+				// Characters between a table start and the first delimiter should be the table id
+				*(buffer + buffer_offset) = c;
+				buffer_offset++;
+			}
+			// Read the integer into a variable from the buffer
+			sscanf(buffer, "%d", &current_id);
+			// If the id is found, exit the loop
+			if (current_id == id){
+				break;
+			}
+
+			// Reset offset for next search
+			buffer_offset = 0;
+
+			// If id has not been found, find the end of this table
+			while((c = fgetc(fp)) != EOF){
+				// If we have reached a container closing character and are at the correct depth, we have reached the correct position to continue to the next table
+				if (c == table_end_char && depth == 0)
+					break;
+
+				// If we encounter a container inside the table, increase depth counter
+				if (c == row_start_char)
+					depth++;
+				if (c == row_end_char)
+					depth--;
+			}
+		}
+		// The loop breaks when the correct position is found, set pos to 0 otherwise
+		table_pos = 0;
+	}
+	
+	// Free allocated memory
+	free(buffer);
+	return table_pos;
+}
+
+// Take a table_metadata struct, table id, and database pointer and write the metadata to the table
+int write_table_metadata(struct table_metadata table_md, int table_id, struct gl_db *db)
+{
+	// Get the table position
+	off_t table_pos = find_table_by_id(table_id, db);
+	off_t metadata_end = table_pos;
+
+	FILE *fp = db->db_file;
+	char c;
+
+	// Move to the position behind the table start, the first character of the metadata
+	fseeko(fp, table_pos + 1, SEEK_SET);
+
+	// Find the end position of the metadata string
+	// TODO: Account for table name
+	// Excluding the table name, which is not contained in the metadata struct, there are 4 elements in the metadata list
+	// Each will be followed by a delimiter. The last delimiter position will mark the end of the needed string
+	int num_elements = 4;
+	while((c = fgetc(fp)) != EOF){
+		// Decrement the number of remaining delimiters each time one is encountered
+		if(c == DB_DELIMITER)
+			num_elements--;
+		// If we have found all the delimiters, return the position, -1 due to fgetc advancing the pos cursor
+		if(num_elements == 0){
+			metadata_end = ftello(fp) - 1;
+			break;
+		}
+	}
+
+	// Allocate a string large enough to hold the metadata string elements, 1 byte for each delimiter, and 1 byte for the null terminator character
+	char delimiter_char = DB_DELIMITER;
+	int size_elements = num_digits_int(table_md.id) + num_digits_int(table_md.num_rows) + num_digits_int(table_md.newest_row_id) + num_digits_int(table_md.num_cols);
+	int num_delimiters = 4; // There are 4 pieces of metadata to be written
+	size_t buffer_size = size_elements + num_delimiters + 1;
+	char *buffer = (char *) malloc(buffer_size);
+	// Write the metadata to the string
+	snprintf(buffer, buffer_size, "%d%c%d%c%d%c%d%c", table_md.id, delimiter_char, table_md.num_rows, delimiter_char, table_md.newest_row_id, delimiter_char, table_md.num_cols, delimiter_char);
+
+	// Replace the current metadata with the newly formed string
+	// Start at the first character after the table start, as to not overwrite the delimiter
+	f_replace_between(fp, buffer, buffer_size - 1, table_pos + 1, metadata_end, DB_IO_OVERWRITE);
+
+	// Free the memory for the buffer
+	free(buffer);
+
+	return 0;
+
+}
+
+// Take a table id and a database as an argument, find table metadata, //TODO: allocates memory for table name
+struct table_metadata get_table_metadata(int id, struct gl_db *db)
+{
+	// Initialize the struct
+	struct table_metadata table_md;
+	// Get the table position
+	off_t table_pos = find_table_by_id(id, db);
+	off_t metadata_end = table_pos;
+
+	FILE *fp = db->db_file;
+	char c;
+
+	// Write the id, which is given
+	table_md.id = id;
+
+	// Move to the position behind the table start, the first character of the metadata
+	fseeko(fp, table_pos + 1, SEEK_SET);
+
+	// Find the length of the string needed to contain the metadata
+	// TODO: Account for table name
+	// Excluding the table name, which is not contained in the metadata struct, there are 4 elements in the metadata list
+	// Each will be followed by a delimiter. The last delimiter position will mark the end of the needed string
+	int num_elements = 4;
+	while((c = fgetc(fp)) != EOF){
+		// Decrement the number of remaining delimiters each time one is encountered
+		if(c == DB_DELIMITER)
+			num_elements--;
+		// If we have found all the delimiters, return the position, -1 due to fgetc advancing the pos cursor
+		if(num_elements == 0){
+			metadata_end = ftello(fp) - 1;
+			break;
+		}
+	}
+
+	// Allocate a string large enough to hold the metadata substring + the null terminator, we do not read the final delimiter
+	size_t buffer_size = metadata_end - table_pos;
+	char *buffer = (char *) malloc(buffer_size);
+
+	// Move the cursor back to the start of the metadata
+	fseeko(fp, table_pos + 1, SEEK_SET);
+
+	// Read the appropriate number of characters into the buffer
+	off_t buffer_offset = 0;
+	while((c = fgetc(fp)) != EOF){
+		// We have read the desired number of characters, write the null terminator
+		if (buffer_offset == (buffer_size - 1)){
+			*(buffer + buffer_offset) = '\0';
+			break;
+		}
+		*(buffer + buffer_offset) = c;
+		buffer_offset++;
+	}
+	// Read from the buffer into the metadata struct
+	sscanf(buffer, "%d,%d,%d,%d", &(table_md.id), &(table_md.num_rows), &(table_md.newest_row_id), &(table_md.num_cols));
+
+	// Free the memory for the buffer
+	free(buffer);
+
+	return table_md;
+}
 
 // Get table id from string name
 int get_table_id(const char *, struct gl_db *);
@@ -820,7 +1014,99 @@ int get_column_count(int, struct gl_db *);
 int get_row_count(int, struct gl_db *);
 
 // Get table column data types
-enum DB_TYPES *get_data_types_list(int, struct gl_db *);
+// Excludes the default key id type
+// Allocates memory for the types list
+enum DB_TYPES *get_data_types_list(int table_id, struct gl_db *db)
+{
+	off_t types_container_pos = 0;
+
+	//Find table position
+	off_t table_pos = find_table_by_id(table_id, db);
+	FILE *fp = db->db_file;
+
+	// Move the file position cursor to one character past the start of the table
+	fseeko(fp, table_pos + 1, SEEK_SET);
+	// Keep track of containers if we encounter any delimiting characters
+	int depth = DB_COLROW_DEPTH;
+	int containers_before_types = 1; // The col names container precedes the types container
+	char delimiter_char = DB_DELIMITER;
+	char c;
+	while((c = fgetc(fp)) != EOF){
+		if (c == DB_ROW_START){
+			// Obtain the cursor position - 1 to account for fgetc advancing the position
+			types_container_pos = ftello(fp) - 1;
+			// If there are no other containers to skip, break and report the position
+			if (containers_before_types == 0 && depth == DB_COLROW_DEPTH)
+				break;
+			// Decrement the containers counter, since we have encountered a container
+			containers_before_types--;
+			// Increment the depth counter, since we are entering a container
+			depth++;
+			// Iterate until we return to desired depth
+			while((c = fgetc(fp)) != EOF){
+				if (c == DB_ROW_END){
+					depth--;
+					break;
+				}
+			}
+		}
+		// Reset the position if the correct container has not been encountered
+		types_container_pos = 0;
+	}
+
+	// Find the end of the types container
+	off_t types_container_end = types_container_pos;
+	while((c = fgetc(fp)) != EOF){
+		if (c == DB_ROW_END){
+			// Obtain the cursor position - 1 to account for fgetc advancing the position
+			types_container_end = ftello(fp) - 1;
+			// If end of container symbol has been found break and report the position
+			break;
+			}
+	}
+
+	// Allocate a string which can hold the bytes from types_container_pos to types_container_end EXCLUDING the container delimiter symbols, but INCLUDING a null-terminator character
+	size_t buffer_size = types_container_end - types_container_pos;
+	char *buffer = (char *) malloc(buffer_size);
+
+	// Return the cursor position to the start of the container to begin reading into the string
+	fseeko(fp, types_container_pos + 1, SEEK_SET);
+
+	// Read the characters until the buffer has been filled appropriately
+	off_t buffer_offset = 0;
+	while((c = fgetc(fp)) != EOF){
+		// We have read the desired number of characters, write the null terminator
+		if (buffer_offset == (buffer_size - 1)){
+			*(buffer + buffer_offset) = '\0';
+			break;
+		}
+		*(buffer + buffer_offset) = c;
+		buffer_offset++;
+	}
+
+	// Get the table metadata and determine the number of elements in the column type list, excluding the key id
+	struct table_metadata table_md = get_table_metadata(table_id, db);
+	int num_elements = table_md.num_cols - 1;
+
+	// Allocate a DB_TYPES array with num_elements space
+	enum DB_TYPES *types_list = (enum DB_TYPES *) malloc(num_elements * (sizeof(enum DB_TYPES)));
+
+	// First two characters will be key id type and a delimiter character, which will be excluded from the types list that is returned
+	char *types_string = buffer + 2;
+	// Null terminated, so strlen works appropriately
+	size_t len_types_string = strlen(types_string);
+
+	for (int i = 0; i < len_types_string; i += 2){
+		sscanf((types_string + i), "%1d", (types_list + (i / 2)));
+	}
+
+	// types_string points to the same memory as buffer, do not free both, set types_string as null
+	free(buffer);
+	buffer = NULL;
+	types_string = NULL;
+
+	return types_list;
+}
 
 // Remove a table from the database
 void remove_table_from_db(int, struct gl_db *);
@@ -828,6 +1114,88 @@ void remove_table_from_db(int, struct gl_db *);
 /*
  *Column management
  */
+// Take a list of DB_TYPES and number of elements, table id, and database pointer, and write the type list to a string in the database
+// Writes an additional default key id of DB_INT type at the beginning of the list
+int write_column_data_types_to_table(enum DB_TYPES *types, int num_elements, int table_id, struct gl_db *db)
+{
+	off_t types_container_pos = 0;
+	// Obtain a string of the types list
+	char *types_string = type_list_to_string(types, num_elements);
+	// String is null-terminated, so strlen will work
+	size_t types_string_len = strlen(types_string);
+
+	// Find the position of the desired table
+	off_t table_pos = find_table_by_id(table_id, db);
+	FILE *fp = db->db_file;
+
+	// Move the file position cursor to one character past the start of the table
+	fseeko(fp, table_pos + 1, SEEK_SET);
+
+	// Keep track of containers if we encounter any delimiting characters
+	int depth = DB_COLROW_DEPTH;
+	int containers_before_types = 1; // The col names container precedes the types container
+	char delimiter_char = DB_DELIMITER;
+	char c;
+	while((c = fgetc(fp)) != EOF){
+		if (c == DB_ROW_START){
+			// Obtain the cursor position - 1 to account for fgetc advancing the position
+			types_container_pos = ftello(fp) - 1;
+			// If there are no other containers to skip, break and report the position
+			if (containers_before_types == 0 && depth == DB_COLROW_DEPTH)
+				break;
+			// Decrement the containers counter, since we have encountered a container
+			containers_before_types--;
+			// Increment the depth counter, since we are entering a container
+			depth++;
+			// Iterate until we return to desired depth
+			while((c = fgetc(fp)) != EOF){
+				if (c == DB_ROW_END){
+					depth--;
+					break;
+				}
+			}
+		}
+		// Reset the position if the correct container has not been encountered
+		types_container_pos = 0;
+	}
+
+	// Find the end of the types container
+	off_t types_container_end = types_container_pos;
+	while((c = fgetc(fp)) != EOF){
+		if (c == DB_ROW_END){
+			// Obtain the cursor position - 1 to account for fgetc advancing the position
+			types_container_end = ftello(fp) - 1;
+			// If end of container symbol has been found break and report the position
+			break;
+			}
+	}
+
+	// Insert the types list string within the container
+	f_replace_between(fp, types_string, types_string_len, types_container_pos, types_container_end, DB_IO_NO_OVERWRITE);
+
+	// Insert the key id type string before the remaining types
+	// Key id column occupies 1 additional column over the other elements
+	// 1 byte for DB_TYPE char, 1 byte for delimiter char, 1 byte for null terminator
+	size_t key_id_string_size = 3;
+	char *key_id_string = (char *) malloc(key_id_string_size);
+	snprintf(key_id_string, key_id_string_size, "%d%c", DB_INT, delimiter_char);
+
+	// The size of the string memory - 1 is the length of the string
+	f_insert_after(fp, key_id_string, key_id_string_size - 1, types_container_pos);
+
+	free(types_string);
+	free(key_id_string);
+
+	// Update the number of columns in the table metadata
+	struct table_metadata table_md = get_table_metadata(table_id, db);
+
+	// The table columns are the elements from the list and 1 additional column for the key id
+	table_md.num_cols = num_elements + 1;
+	write_table_metadata(table_md, table_id, db);
+
+	return 0;
+}
+
 // Add a column in a table with a string identifier and type specification, specify table id and database
 int add_column_to_table(const char *name, enum DB_TYPES type,int table_id, struct gl_db *db)
 {

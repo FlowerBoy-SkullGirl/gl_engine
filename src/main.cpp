@@ -394,8 +394,42 @@ int main()
 	serial_string = serial_to_string(ro);
 	printf("Serial string double converted: %s\n", serial_string);
 
+
+	// Testing database
+	struct gl_db *db = create_database("database/game.db");
+	if (db == NULL)
+		db = open_database("database/game.db");
+	if (find_table_by_id(1, db) == 0){
+		add_table_to_db("GameObjects", db);
+	}
+	if (find_table_by_id(2, db) == 0){
+		add_table_to_db("SecondTable", db);
+	}
+	off_t table1_pos = find_table_by_id(1,db);
+	off_t table2_pos = find_table_by_id(2,db);
+
+	printf("Table positions: %ld, %ld\n", table1_pos, table2_pos);
+
+	struct table_metadata table1_md = get_table_metadata(1, db);
+
+	printf("Table metadata: %d, %d, %d, %d\n", table1_md.id, table1_md.num_rows, table1_md.newest_row_id, table1_md.num_cols);
+
+	struct table_metadata table2_md = get_table_metadata(2, db);
+
+	printf("Table2 metadata: %d, %d, %d, %d\n", table2_md.id, table2_md.num_rows, table2_md.newest_row_id, table2_md.num_cols);
+
+	write_column_data_types_to_table(ro->data_type_list, ro->column_count, 1, db);
+
+	enum DB_TYPES *types_table1 = get_data_types_list(1, db);
+	char *types_table1_string = type_list_to_string(types_table1, table1_md.num_cols - 1);
+
+	printf("Get types list: %s\n", types_table1_string);
+
+	free(types_table1);
+	free(types_table1_string);
 	free_serialized_data(ro);
 	free(serial_string);
+	close_database(db);
 
 	/* CLEAN UP */
 	glDeleteProgram(shader1);

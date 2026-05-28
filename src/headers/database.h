@@ -51,6 +51,10 @@
 #define DB_WHITESPACE ' '
 #define DB_KEY_NAME "id"
 
+// Depth of different containers
+#define DB_TABLE_DEPTH 0
+#define DB_COLROW_DEPTH 1
+
 struct gl_db{
 	FILE *db_file;
 };
@@ -179,6 +183,15 @@ int write_database_metadata(struct database_metadata, struct gl_db *db);
 // Create a table in the database with a string name and specify database, returns table id
 int add_table_to_db(const char*, struct gl_db *);
 
+// Take an id integer and a database and return the position of the desired table
+off_t find_table_by_id(int, struct gl_db *);
+
+// Take a table id and a database as an argument, find table metadata, //TODO: allocates memory for table name
+struct table_metadata get_table_metadata(int, struct gl_db *);
+
+// Take a table_metadata struct, table id, and database pointer and write the metadata to the table
+int write_table_metadata(struct table_metadata, int, struct gl_db *);
+
 // Get table id from string name
 int get_table_id(const char *, struct gl_db *);
 
@@ -189,6 +202,8 @@ int get_column_count(int, struct gl_db *);
 int get_row_count(int, struct gl_db *);
 
 // Get table column data types
+// Excludes the default key id type
+// Allocates memory for the types list
 enum DB_TYPES *get_data_types_list(int, struct gl_db *);
 
 // Remove a table from the database
@@ -197,6 +212,10 @@ void remove_table_from_db(int, struct gl_db *);
 /*
  *Column management
  */
+// Take a list of DB_TYPES and number of elements, table id, and database pointer, and write the type list to a string in the database
+// Writes an additional default key id of DB_INT type at the beginning of the list
+int write_column_data_types_to_table(enum DB_TYPES *, int, int, struct gl_db *);
+
 // Add a column in a table with a string identifier and type specification ,specify table id and database
 int add_column_to_table(const char*, enum DB_TYPES, int, struct gl_db *);
 
