@@ -419,11 +419,15 @@ int main()
 	printf("Table2 metadata: %d, %d, %d, %d\n", table2_md.id, table2_md.num_rows, table2_md.newest_row_id, table2_md.num_cols);
 
 	write_column_data_types_to_table(ro->data_type_list, ro->column_count, 1, db);
+	// Update metadata after write
+	table1_md = get_table_metadata(1, db);
 
 	enum DB_TYPES *types_table1 = get_data_types_list(1, db);
 	char *types_table1_string = type_list_to_string(types_table1, table1_md.num_cols - 1);
 
 	printf("Get types list: %s\n", types_table1_string);
+
+	add_row_to_table(ro, 1, db);
 
 	free(types_table1);
 	free(types_table1_string);

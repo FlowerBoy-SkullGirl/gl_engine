@@ -709,14 +709,14 @@ int write_database_metadata(struct database_metadata db_md, struct gl_db *db)
 
 	// Return an error if database cannot be accessed
 	if (db == NULL)
-		return 1;
+		return DB_ERROR;
 	// Used for convenience, do not close this file, as it is meant to stay open
 	FILE *fp = db->db_file;
 	size_t char_size = sizeof(char);
 
 	// Return an error if database file cannot be accessed
 	if (fp == NULL)
-		return 1;
+		return DB_ERROR;
 
 	// Ensure we are at the beginning of the file
 	fseeko(fp, 0, SEEK_SET);
@@ -750,7 +750,7 @@ int write_database_metadata(struct database_metadata db_md, struct gl_db *db)
 	// Free string buffer
 	free(metadata_string);
 
-	return 0;
+	return DB_SUCCESS;
 }
 
 
@@ -777,7 +777,7 @@ int add_table_to_db(const char *name, struct gl_db *db)
 
 	// If the maximum number of tables already exist, return
 	if (db_md.num_tables >= DB_MAX_TABLES)
-		return 1;
+		return DB_ERROR;
 	
 	// If there are no other tables, do not write a delimiter
 	if (db_md.num_tables != 0){
@@ -789,7 +789,7 @@ int add_table_to_db(const char *name, struct gl_db *db)
 	db_md.newest_table_id += 1;
 	// Write the new database metadata
 	if(write_database_metadata(db_md, db))
-		return 1;
+		return DB_ERROR;
 
 	// Writing metadata may have moved file position cursor
 	fseeko(fp, 0, SEEK_END);
@@ -810,10 +810,7 @@ int add_table_to_db(const char *name, struct gl_db *db)
 	fwrite(&row_end_char, char_size, 1,fp);
 	fwrite(&table_end_char, char_size, 1, fp);
 
-	// Each table has a default 'id' column with type DB_INT
-	add_column_to_table(DB_KEY_NAME, DB_INT, db_md.newest_table_id, db);
-
-	return 0;
+	return DB_SUCCESS;
 }
 
 // Take an id integer and a database and return the position of the desired table
@@ -875,7 +872,7 @@ off_t find_table_by_id(int id, struct gl_db *db)
 			// If id has not been found, find the end of this table
 			while((c = fgetc(fp)) != EOF){
 				// If we have reached a container closing character and are at the correct depth, we have reached the correct position to continue to the next table
-				if (c == table_end_char && depth == 0)
+				if (c == table_end_char && depth == DB_TABLE_DEPTH)
 					break;
 
 				// If we encounter a container inside the table, increase depth counter
@@ -939,7 +936,7 @@ int write_table_metadata(struct table_metadata table_md, int table_id, struct gl
 	// Free the memory for the buffer
 	free(buffer);
 
-	return 0;
+	return DB_SUCCESS;
 
 }
 
@@ -1193,13 +1190,13 @@ int write_column_data_types_to_table(enum DB_TYPES *types, int num_elements, int
 	table_md.num_cols = num_elements + 1;
 	write_table_metadata(table_md, table_id, db);
 
-	return 0;
+	return DB_SUCCESS;
 }
 
 // Add a column in a table with a string identifier and type specification, specify table id and database
 int add_column_to_table(const char *name, enum DB_TYPES type,int table_id, struct gl_db *db)
 {
-	return 0;
+	return DB_SUCCESS;
 }
 
 // Get the index of a column from the string name, table id, and database
@@ -1215,7 +1212,124 @@ void remove_column_from_table_by_index(int, int, struct gl_db *);
  *Row management
  */
 // Add a row to a table by providing a serialized object, the table id, and the database
-int add_row_to_table(struct row_object, int, struct gl_db *);
+// Will reject non-conforming row objects based on table column data types
+// If the table has no current column data types, it will write the row object's data types list
+int add_row_to_table(struct row_object *ro, int table_id, struct gl_db *db)
+{
+	// Create a more convenient pointer for the database file 
+	FILE *fp = db->db_file;
+
+	// Table symbols
+	char table_start_char = DB_TABLE_START;
+	char table_end_char = DB_TABLE_END;
+	char row_start_char = DB_ROW_START;
+	char row_end_char = DB_ROW_END;
+	char delimiter_char = DB_DELIMITER;
+
+	// Find the table to be written to
+	off_t table_pos = 0;
+	table_pos = find_table_by_id(table_id, db);
+	// If table was not found, return
+	if (!table_pos)
+		return DB_ERROR;
+
+	// Get table metadata
+	struct table_metadata table_md = get_table_metadata(table_id, db);
+
+	// Obtain a string for the row data
+	char *row_string = serial_to_string(ro);
+	
+	// Obtain a string for the data types list
+	char *row_data_types = type_list_to_string(ro->data_type_list, ro->column_count);
+
+	// If the table has no current data types column data, continue to next procedure
+	// Otherwise, compare the current data to the new data and reject row objects that do not conform
+	if (table_md.num_cols != 0){
+
+		// Check that the table and row object have the same number of data elements, minus the key id data
+		// Otherwise, exit with an error after freeing resources
+		if ((table_md.num_cols - 1) != ro->column_count){
+			free(row_string);
+			free(row_data_types);
+			return DB_ERROR;
+		}
+		// Find the table's existing data type list and convert it to a string
+		enum DB_TYPES *table_data_types = get_data_types_list(table_id, db);
+		char *table_data_types_string = type_list_to_string(table_data_types, table_md.num_cols - 1); // Subtract 1 for the key id column
+
+		// Compare the string to that of the row object, exit with an error if they are not equal
+		if (strcmp(table_data_types_string, row_data_types)){
+			free(row_string);
+			free(row_data_types);
+			free(table_data_types);
+			free(table_data_types_string);
+			return DB_ERROR;
+		}
+
+		// Free the resources used to compare the strings
+		free(table_data_types);
+		free(table_data_types_string);
+	}else{
+		// If the table previously had no data types column data, write it now
+		write_column_data_types_to_table(ro->data_type_list, ro->column_count, table_id, db);
+	}
+	// Both cases are now converged with the data types being written to the table, matching the row object
+	
+	// Find the end of the table, where the row will be appended
+	off_t table_end = 0;
+	
+	// Move the file position to the character after the table start delimiter
+	fseeko(fp, table_pos + 1, SEEK_SET);
+
+	// We are within the table container, depth is colrow
+	int depth = DB_COLROW_DEPTH;
+	char c;
+	while ((c = fgetc(fp)) != EOF){
+		// If we have reached a container closing character and are at the correct depth, we have reached the end of the desired table
+		if (c == table_end_char && depth == DB_COLROW_DEPTH){
+			// Update the position offset, decremented by 1 due to fgetc advancing the offset
+			table_end = ftello(fp) - 1;
+			break;
+		}
+
+		// If we encounter a container inside the table, increase depth counter
+		if (c == row_start_char)
+			depth++;
+		if (c == row_end_char)
+			depth--;
+	}
+	// If the table end is not found, return with an error
+	if(table_end == 0){
+		free(row_string);
+		free(row_data_types);
+		return DB_ERROR;
+	}
+
+	// Increment the number of rows
+	table_md.num_rows += 1;
+	table_md.newest_row_id += 1;
+
+	// Allocate a string buffer that can hold a database delimiter, the row start delimiter (1-byte), the row_id, 
+	// the database delimiter character (1-byte), the existing row object string, 
+	// a row end delimiter (1-byte), and the null-terminator(1-byte)
+	int char_size = sizeof(char);
+	size_t buffer_size = (char_size * 5) + num_digits_int(table_md.newest_row_id) + strlen(row_string);
+	char *buffer = (char *) malloc(buffer_size);
+	snprintf(buffer, buffer_size, "%c%c%d%c%s%c", delimiter_char, row_start_char, table_md.newest_row_id, delimiter_char, row_string, row_end_char);
+
+	// Insert the new string into the file before the table_end character, subtract 1 from the buffer size to exclude the null-terminator
+	f_insert_after(fp, buffer, buffer_size - 1, table_end - 1);
+
+	// Update the table metadata
+	write_table_metadata(table_md, table_id, db);
+
+	// Free the allocated resources and return success
+	free(row_string);
+	free(row_data_types);
+	free(buffer);
+	
+	return DB_SUCCESS;
+}
 
 // Remove a row from the table by providing the row index/id, the table id, and the database
 int remove_row_from_table(int, int, struct gl_db *);

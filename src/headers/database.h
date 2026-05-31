@@ -55,6 +55,10 @@
 #define DB_TABLE_DEPTH 0
 #define DB_COLROW_DEPTH 1
 
+// Useful return values
+#define DB_SUCCESS 0
+#define DB_ERROR 1
+
 struct gl_db{
 	FILE *db_file;
 };
@@ -232,7 +236,9 @@ void remove_column_from_table_by_index(int, int, struct gl_db *);
  *Row management
  */
 // Add a row to a table by providing a serialized object, the table id, and the database
-int add_row_to_table(struct row_object, int, struct gl_db *);
+// Will reject non-conforming row objects based on table column data types
+// If the table has no current column data types, it will write the row object's data types list
+int add_row_to_table(struct row_object *, int, struct gl_db *);
 
 // Remove a row from the table by providing the row index/id, the table id, and the database
 int remove_row_from_table(int, int, struct gl_db *);
