@@ -251,6 +251,7 @@ int remove_row_from_table(int, int, struct gl_db *);
  *Data management
  */
 // Return the data from an entire row, provide the row index, table id, and database
+// Allocates memory for a row_object
 struct row_object *get_row_data(int, int, struct gl_db *);
 
 // Update row by providing struct object, row index, table id, and database

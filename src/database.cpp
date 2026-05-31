@@ -1492,7 +1492,84 @@ int remove_row_from_table(int row_id, int table_id, struct gl_db *db)
  *Data management
  */
 // Return the data from an entire row, provide the row index, table id, and database
-struct row_object *get_row_data(int, int, struct gl_db *);
+// Allocates memory for a row_object
+struct row_object *get_row_data(int row_id, int table_id, struct gl_db *db)
+{
+
+	// Value returned
+	struct row_object *ro = NULL;
+
+	FILE *fp = db->db_file;
+
+	// Find the row position
+	off_t row_pos = find_row_by_id(row_id, table_id, db);
+	off_t row_end = 0;
+
+	// If row is not found, return error
+	if (!row_pos)
+		return ro;
+
+	// Find the position of the end of the row
+	// Seek to the inside of the row container
+	fseeko(fp, row_pos + 1, SEEK_SET);
+
+	// Iterate the file until the row end symbol has been found at the appropriate depth
+	int depth = DB_COLROW_DEPTH;
+	char c;
+	while ((c = fgetc(fp)) != EOF){
+		// Mark the current position, moved back one position due to fgetc advancing the offset
+		row_end = ftello(fp) - 1;
+		// End of the container has been reached
+		if (c == DB_ROW_END && depth == DB_COLROW_DEPTH)
+			break;
+		if (c == DB_ROW_START)
+			depth++;
+		if (c == DB_ROW_END)
+			depth--;
+	}
+	// Return error if end of file was reached
+	if (c == EOF)
+		return ro;
+
+	// Increment the row position by number of digits in the id, plus number of chars in the delimiter char so that we skip
+	// The key id data
+	row_pos += num_digits_int(row_id) + 1;
+	// Seek to the inside of the row container after the key id
+	fseeko(fp, row_pos + 1, SEEK_SET);
+
+	// Allocate a buffer large enough to hold the string between the start of the row and the end, plus the null terminator
+	size_t buffer_size = row_end - row_pos;
+	char *buffer = (char *) malloc(buffer_size);
+	
+	// Read the appropriate number of characters into the buffer
+	off_t buffer_offset = 0;
+	while((c = fgetc(fp)) != EOF){
+		// We have read the desired number of characters, write the null terminator
+		if (buffer_offset == (buffer_size - 1)){
+			*(buffer + buffer_offset) = '\0';
+			break;
+		}
+		*(buffer + buffer_offset) = c;
+		buffer_offset++;
+	}
+
+	// Obtain the table metadata for number of elements
+	struct table_metadata table_md = get_table_metadata(table_id, db);
+
+	// Obtain a string for the data types list
+	enum DB_TYPES *types_list = get_data_types_list(table_id, db);
+	// Subtract 1 from the number of columns to exclude the key id column
+	char *types_list_string = type_list_to_string(types_list, table_md.num_cols - 1);
+
+	// Create the row object from the obtained string
+	ro = string_to_serial(buffer, types_list_string);
+
+	// Free allocated resources and return the row object
+	free(types_list);
+	free(types_list_string);
+	free(buffer);
+	return ro;
+}
 
 // Update row by providing struct object, row index, table id, and database
 void update_row_data_at_index(struct row_object, int, int, struct gl_db *);

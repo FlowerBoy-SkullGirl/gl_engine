@@ -431,12 +431,19 @@ int main()
 	int row1_pos = find_row_by_id(1, 1, db);
 	printf("Row 1 pos: %d\n", row1_pos);
 
+	struct row_object *ro2 = get_row_data(2, 1, db);
+	char *ro2_data = serial_to_string(ro2);
+
+	printf("Row 2 data: %s\n", ro2_data);
+
 	remove_row_from_table(1, 1, db);
 
 	free(types_table1);
 	free(types_table1_string);
 	free_serialized_data(ro);
+	free_serialized_data(ro2);
 	free(serial_string);
+	free(ro2_data);
 	close_database(db);
 
 	/* CLEAN UP */
