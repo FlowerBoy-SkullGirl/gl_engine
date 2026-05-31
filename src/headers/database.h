@@ -240,6 +240,10 @@ void remove_column_from_table_by_index(int, int, struct gl_db *);
 // If the table has no current column data types, it will write the row object's data types list
 int add_row_to_table(struct row_object *, int, struct gl_db *);
 
+// Find the position of a row with a given id, table id, and database
+// Return 0 if it is not found
+off_t find_row_by_id(int, int, struct gl_db *);
+
 // Remove a row from the table by providing the row index/id, the table id, and the database
 int remove_row_from_table(int, int, struct gl_db *);
 

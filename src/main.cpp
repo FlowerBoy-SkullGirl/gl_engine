@@ -428,6 +428,10 @@ int main()
 	printf("Get types list: %s\n", types_table1_string);
 
 	add_row_to_table(ro, 1, db);
+	int row1_pos = find_row_by_id(1, 1, db);
+	printf("Row 1 pos: %d\n", row1_pos);
+
+	remove_row_from_table(1, 1, db);
 
 	free(types_table1);
 	free(types_table1_string);

@@ -175,10 +175,10 @@ off_t f_replace_between(FILE *fp, void *data, size_t size, off_t start, off_t en
 	f_copy_between(temp, fp, start, file_size);
 
 	// If file has remaining characters, truncate
+	off_t new_pos = ftello(fp);
 	// File pointer position is currently 1 char after what has been written
-	off_t new_size = ftello(fp);
-	if (new_size > file_size)
-		truncate_file_after(fp, new_size - 1);
+	if (((sum < ((end - start) + 1)) && overwrite == DB_IO_OVERWRITE) || ((sum < ((end - start) - 1)) && overwrite == DB_IO_NO_OVERWRITE))
+		truncate_file_after(fp, new_pos - 1);
 
 	// Close the temporary file
 	fclose(temp);
@@ -1331,8 +1331,162 @@ int add_row_to_table(struct row_object *ro, int table_id, struct gl_db *db)
 	return DB_SUCCESS;
 }
 
+// Find the position of a row with a given id, table id, and database
+// Return 0 if it is not found
+off_t find_row_by_id(int row_id, int table_id, struct gl_db *db)
+{
+	off_t row_pos = 0;
+	FILE *fp = db->db_file;
+
+	// Find the table position
+	off_t table_pos = find_table_by_id(table_id, db);
+
+	// Get the table metadata to check number of rows
+	struct table_metadata table_md = get_table_metadata(table_id, db);
+
+	// If row id is greater than the greatest row id created, it cannot be in the table, return error
+	if (row_id > table_md.newest_row_id)
+		return row_pos;
+
+	// Skip the column data containers
+	int num_col_containers = 2;
+
+	// Move the file position cursor to the inside of the table
+	fseeko(fp, table_pos + 1, SEEK_SET);
+
+	int depth = DB_COLROW_DEPTH;
+	char c;
+	while((c = fgetc(fp)) != EOF){
+		if (c == DB_ROW_START){
+			// Obtain the cursor position - 1 to account for fgetc advancing the position
+			row_pos = ftello(fp) - 1;
+			// If there are no other containers to skip, break and report the position
+			if (num_col_containers == 0 && depth == DB_COLROW_DEPTH)
+				break;
+			// Decrement the containers counter, since we have encountered a container
+			num_col_containers--;
+			// Increment the depth counter, since we are entering a container
+			depth++;
+			// Iterate until we return to desired depth
+			while((c = fgetc(fp)) != EOF){
+				if (c == DB_ROW_END){
+					depth--;
+					break;
+				}
+			}
+		}
+		// Set row_pos to 0 if we did not reach the break statement in this iteration
+		row_pos = 0;
+	}
+
+	// Return if end of columns could not be found
+	if (!row_pos)
+		return row_pos;
+
+	// Decrement the row position by 1 to place the offset before the first row_start symbol
+	row_pos--;
+	fseeko(fp, row_pos, SEEK_SET);
+
+	// Iterate through the file until a row start delimiter is found, check id, then return the position offset
+	int current_id = 0;
+	depth = DB_COLROW_DEPTH;
+
+	// Allocate a buffer that can hold the id characters plus the null terminator
+	size_t buffer_size = num_digits_int(table_md.newest_row_id) + 1;
+	size_t buffer_offset = 0;
+	char *buffer = (char *) malloc(buffer_size);
+
+	while((c = fgetc(fp)) != EOF){
+		if (c == DB_ROW_START){
+			// Record the position, back one character due to fgetc advancing the position
+			row_pos = ftello(fp) - 1;
+			// Determine if this row has the desired id
+			while ((c = fgetc(fp)) != EOF){
+				// We have written more characters than our expected max size
+				if (buffer_offset >= buffer_size)
+					break;
+				// We have reached the end of the id field
+				if (c == DB_DELIMITER){
+					*(buffer + buffer_offset) = '\0';
+					break;
+				}
+				// Characters between a table start and the first delimiter should be the table id
+				*(buffer + buffer_offset) = c;
+				buffer_offset++;
+			}
+			// Read the integer into a variable from the buffer
+			sscanf(buffer, "%d", &current_id);
+			// If the id is found, exit the loop
+			if (current_id == row_id){
+				break;
+			}
+
+			// Reset offset for next search
+			buffer_offset = 0;
+
+			// If id has not been found, find the end of this table
+			while((c = fgetc(fp)) != EOF){
+				// If we have reached a container closing character and are at the correct depth, we have reached the correct position to continue to the next row
+				if (c == DB_ROW_END && depth == DB_COLROW_DEPTH)
+					break;
+
+				// If we encounter a container inside the row, increase depth counter
+				if (c == DB_ROW_START)
+					depth++;
+				if (c == DB_ROW_END)
+					depth--;
+			}
+		}
+		// The loop breaks when the correct position is found, set pos to 0 otherwise
+		row_pos = 0;
+	}
+
+	free(buffer);
+	return row_pos;
+}
+
 // Remove a row from the table by providing the row index/id, the table id, and the database
-int remove_row_from_table(int, int, struct gl_db *);
+int remove_row_from_table(int row_id, int table_id, struct gl_db *db)
+{
+	FILE *fp = db->db_file;
+
+	// Find the row position
+	off_t row_pos = find_row_by_id(row_id, table_id, db);
+	off_t row_end = 0;
+
+	// If row is not found, return error
+	if (!row_pos)
+		return DB_ERROR;
+
+	// Find the position of the end of the row
+	// Seek to the inside of the row container
+	fseeko(fp, row_pos + 1, SEEK_SET);
+
+	// Iterate the file until the row end symbol has been found at the appropriate depth
+	int depth = DB_COLROW_DEPTH;
+	char c;
+	while ((c = fgetc(fp)) != EOF){
+		// Mark the current position, moved back one position due to fgetc advancing the offset
+		row_end = ftello(fp) - 1;
+		// End of the container has been reached
+		if (c == DB_ROW_END && depth == DB_COLROW_DEPTH)
+			break;
+		if (c == DB_ROW_START)
+			depth++;
+		if (c == DB_ROW_END)
+			depth--;
+	}
+	// Return error if end of file was reached
+	if (c == EOF)
+		return DB_ERROR;
+
+	// Overwrite the data between the offsets with 0 bytes, effectively erasing the row
+	// f_replace_between rejects null data, so we give a pointer to some data and specify size 0 so none is written
+	// Decrement the row_pos offset so that the preceding delimiter is also erased
+	f_replace_between(fp, &c, 0, row_pos - 1, row_end, DB_IO_OVERWRITE);
+
+	return DB_SUCCESS;
+}
 
 /*
  *Data management
