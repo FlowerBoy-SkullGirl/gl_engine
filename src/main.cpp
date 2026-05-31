@@ -399,10 +399,12 @@ int main()
 	struct gl_db *db = create_database("database/game.db");
 	if (db == NULL)
 		db = open_database("database/game.db");
+
+	struct database_metadata db_md = get_database_metadata(db);
 	if (find_table_by_id(1, db) == 0){
 		add_table_to_db("GameObjects", db);
 	}
-	if (find_table_by_id(2, db) == 0){
+	if ((find_table_by_id(2, db) == 0) && (db_md.num_tables < 2)){
 		add_table_to_db("SecondTable", db);
 	}
 	off_t table1_pos = find_table_by_id(1,db);
@@ -431,19 +433,26 @@ int main()
 	int row1_pos = find_row_by_id(1, 1, db);
 	printf("Row 1 pos: %d\n", row1_pos);
 
-	struct row_object *ro2 = get_row_data(2, 1, db);
-	char *ro2_data = serial_to_string(ro2);
+	// Update metadata after write
+	table1_md = get_table_metadata(1, db);
 
-	printf("Row 2 data: %s\n", ro2_data);
+	if (table1_md.num_rows >= 2){
+		struct row_object *ro2 = get_row_data(2, 1, db);
+		char *ro2_data = serial_to_string(ro2);
+
+		printf("Row 2 data: %s\n", ro2_data);
+		free_serialized_data(ro2);
+		free(ro2_data);
+	}
 
 	remove_row_from_table(1, 1, db);
+
+	remove_table_from_db(2, db);
 
 	free(types_table1);
 	free(types_table1_string);
 	free_serialized_data(ro);
-	free_serialized_data(ro2);
 	free(serial_string);
-	free(ro2_data);
 	close_database(db);
 
 	/* CLEAN UP */

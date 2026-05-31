@@ -1106,7 +1106,50 @@ enum DB_TYPES *get_data_types_list(int table_id, struct gl_db *db)
 }
 
 // Remove a table from the database
-void remove_table_from_db(int, struct gl_db *);
+int remove_table_from_db(int table_id, struct gl_db *db)
+{
+	FILE *fp = db->db_file;
+
+	// Find the table position
+	off_t table_pos = find_table_by_id(table_id, db);
+	off_t table_end = 0;
+
+	// If table is not found, return error
+	if (!table_pos)
+		return DB_ERROR;
+
+	// Find the position of the end of the table
+	// Seek to the inside of the table container
+	fseeko(fp, table_pos + 1, SEEK_SET);
+
+	// Iterate the file until the table end symbol has been found at the appropriate depth
+	int depth = DB_TABLE_DEPTH;
+	char c;
+	while ((c = fgetc(fp)) != EOF){
+		// Mark the current position, moved back one position due to fgetc advancing the offset
+		table_end = ftello(fp) - 1;
+		// End of the container has been reached
+		if (c == DB_TABLE_END && depth == DB_TABLE_DEPTH)
+			break;
+		if (c == DB_ROW_START)
+			depth++;
+		if (c == DB_ROW_END)
+			depth--;
+	}
+	// Return error if end of file was reached
+	if (c == EOF)
+		return DB_ERROR;
+
+	// If the character before the table is a delimiter, include it in the overwrite below
+	fseeko(fp, table_pos - 1, SEEK_SET);
+	if ((c = fgetc(fp)) == DB_DELIMITER)
+		table_pos -= 1;
+	// Overwrite the data between the offsets with 0 bytes, effectively erasing the row
+	// f_replace_between rejects null data, so we give a pointer to some data and specify size 0 so none is written
+	f_replace_between(fp, &c, 0, table_pos, table_end, DB_IO_OVERWRITE);
+
+	return DB_SUCCESS;
+}
 
 /*
  *Column management
