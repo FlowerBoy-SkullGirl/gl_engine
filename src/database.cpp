@@ -13,6 +13,7 @@
 
 // Write data into a buffer, checking if the specified size and offset will write outside of the bounds of the buffer
 // size_t is unsigned, so we do not worry about negative offset or obj size arguments
+// Behaviour is undefined if caller provides incorrect values for size_t arguments
 size_t write_to_buffer(char *buffer, char *data, size_t offset, size_t size_obj, size_t buf_len)
 {
 	if (offset + size_obj > buf_len)
@@ -136,6 +137,7 @@ off_t f_copy_between(FILE *src, FILE *dest, off_t start, off_t end)
 
 // Replace data in file between two offsets with buffer of specified size, preserve file contents before and after offsets
 // Return number of bytes written
+// Behaviour is undefined if caller provides incorrect values for size_t arguments
 off_t f_replace_between(FILE *fp, void *data, size_t size, off_t start, off_t end, DBenum overwrite)
 {
 	// Return early if there is nothing to write
@@ -192,6 +194,7 @@ off_t f_replace_between(FILE *fp, void *data, size_t size, off_t start, off_t en
 
 // Insert data in a file from a buffer of specified size after the given offset, preserving(do not overwrite) data after the offset
 // Return number of bytes written
+// Behaviour is undefined if caller provides incorrect values for size_t arguments
 off_t f_insert_after(FILE *fp, void *data, size_t size, off_t offset)
 {
 	// Return early if there is nothing to write
@@ -245,11 +248,14 @@ int num_digits_int(int x)
 
 // Takes a data type list and number of elements argument and converts it to a null-terminated, delimited string
 // Allocates memory for the string
+// Returns NULL if operation fails
 char *type_list_to_string(enum DB_TYPES *type_list, int elements)
 {
 	// Allocate a string that can hold each 1-digit element, a 1-char delimiter for each element except the last, and the 1-byte null terminator
 	size_t buffer_size = elements * 2;
 	char *buffer = (char *) malloc(buffer_size);
+	if (buffer == NULL)
+		return buffer;
 
 	// For each element of type_list, write the element to the string
 	for (int i = 0; i < elements; i++){
@@ -268,6 +274,7 @@ char *type_list_to_string(enum DB_TYPES *type_list, int elements)
 
 // Take a row_object struct and convert it to a null-terminated, delimited string
 // Allocates memory for the string
+// Returns NULL if operation fails
 char *serial_to_string(struct row_object *ro)
 {
 	// Tracks the offset of the data_list where the next element is to be read
@@ -335,6 +342,8 @@ char *serial_to_string(struct row_object *ro)
 	// and an additional byte for the null-terminator
 	buffer_size += (ro->column_count);
 	buffer = (char *) malloc(buffer_size);
+	if (buffer == NULL)
+		return buffer;
 	
 	// Reset offset
 	offset = 0;
