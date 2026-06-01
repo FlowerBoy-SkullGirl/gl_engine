@@ -254,8 +254,8 @@ int remove_row_from_table(int, int, struct gl_db *);
 // Allocates memory for a row_object
 struct row_object *get_row_data(int, int, struct gl_db *);
 
-// Update row by providing struct object, row index, table id, and database
-void update_row_data_at_index(struct row_object, int, int, struct gl_db *);
+// Update row by providing struct object, row id, table id, and database
+int update_row_data_by_id(struct row_object *, int, int, struct gl_db *);
 
 // Query an int value by indices, table id, and database
 int get_int_from_database_index(int, int, int, struct gl_db *);

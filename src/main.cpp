@@ -168,6 +168,17 @@ int main()
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
+	/* INITIALIZE DATABASE */
+	const int db_object_table = 1;
+	const int db_player_row = 1;
+	struct gl_db *db = create_database("database/game.db");
+	if (db == NULL)
+		db = open_database("database/game.db");
+
+	struct database_metadata db_md = get_database_metadata(db);
+	if (find_table_by_id(db_object_table, db) == 0){
+		add_table_to_db("GameObjects", db);
+	}
 
 	/* LOAD SHAPES FOR BUFFERS */
 
@@ -241,10 +252,23 @@ int main()
 	append_object(bg_objects, cloud2);
 
 	// Player object
-	player_object = init_game_object();
+	// Check the database for existing data
+	struct row_object *player_object_ro = NULL;
+	if (find_row_by_id(db_player_row, db_object_table, db) != 0){
+		// Get the data from the database
+		player_object_ro = get_row_data(db_player_row, db_object_table, db);
+		if (player_object_ro == NULL)
+			return -1;
+		// Convert the data to a game object
+		player_object = deserialize_game_object(player_object_ro);
+		free_serialized_data(player_object_ro);
+	}else{
+		player_object = init_game_object();
+		set_object_scale(player_object, 3.0f, 3.0f);
+		set_object_pos(player_object, 0.0f, 0.0f);
+	}
+	// Set the attributes not specified by the database
 	set_object_mesh(player_object, triangle_mesh);
-	set_object_scale(player_object, 3.0f, 3.0f);
-	set_object_pos(player_object, 0.0f, 0.0f);
 	set_object_color(player_object, convert_to_rgba(0.0f, 0.0f, 1.0f, 0.8f));
 
 	add_object_hitbox(player_object, square_hitbox);
@@ -373,87 +397,16 @@ int main()
 	}
 
 
-	// Testing serialization
-	struct row_object *ro = serialize_game_object(player_object);
-	char *serial_string = serial_to_string(ro);
-	printf("Serial string: %s\n", serial_string);
-
-	char *data_type_list_str = type_list_to_string(ro->data_type_list, ro->column_count);
-
-	free_serialized_data(ro);
-	ro = NULL;
-
-	ro = string_to_serial(serial_string, data_type_list_str);
-
-	free(serial_string);
-	serial_string = NULL;
-
-	free(data_type_list_str);
-	data_type_list_str = NULL;
-
-	serial_string = serial_to_string(ro);
-	printf("Serial string double converted: %s\n", serial_string);
-
-
-	// Testing database
-	struct gl_db *db = create_database("database/game.db");
-	if (db == NULL)
-		db = open_database("database/game.db");
-
-	struct database_metadata db_md = get_database_metadata(db);
-	if (find_table_by_id(1, db) == 0){
-		add_table_to_db("GameObjects", db);
-	}
-	if ((find_table_by_id(2, db) == 0) && (db_md.num_tables < 2)){
-		add_table_to_db("SecondTable", db);
-	}
-	off_t table1_pos = find_table_by_id(1,db);
-	off_t table2_pos = find_table_by_id(2,db);
-
-	printf("Table positions: %ld, %ld\n", table1_pos, table2_pos);
-
-	struct table_metadata table1_md = get_table_metadata(1, db);
-
-	printf("Table metadata: %d, %d, %d, %d\n", table1_md.id, table1_md.num_rows, table1_md.newest_row_id, table1_md.num_cols);
-
-	struct table_metadata table2_md = get_table_metadata(2, db);
-
-	printf("Table2 metadata: %d, %d, %d, %d\n", table2_md.id, table2_md.num_rows, table2_md.newest_row_id, table2_md.num_cols);
-
-	write_column_data_types_to_table(ro->data_type_list, ro->column_count, 1, db);
-	// Update metadata after write
-	table1_md = get_table_metadata(1, db);
-
-	enum DB_TYPES *types_table1 = get_data_types_list(1, db);
-	char *types_table1_string = type_list_to_string(types_table1, table1_md.num_cols - 1);
-
-	printf("Get types list: %s\n", types_table1_string);
-
-	add_row_to_table(ro, 1, db);
-	int row1_pos = find_row_by_id(1, 1, db);
-	printf("Row 1 pos: %d\n", row1_pos);
-
-	// Update metadata after write
-	table1_md = get_table_metadata(1, db);
-
-	if (table1_md.num_rows >= 2){
-		struct row_object *ro2 = get_row_data(2, 1, db);
-		char *ro2_data = serial_to_string(ro2);
-
-		printf("Row 2 data: %s\n", ro2_data);
-		free_serialized_data(ro2);
-		free(ro2_data);
+	// Update the player object data in the database
+	player_object_ro = serialize_game_object(player_object);
+	// Write the data if it is not present, otherwise, overwrite it
+	if (find_row_by_id(db_player_row, db_object_table, db) == 0){
+		add_row_to_table(player_object_ro, db_object_table, db);
+	}else{
+		update_row_data_by_id(player_object_ro, db_player_row, db_object_table, db);
 	}
 
-	remove_row_from_table(1, 1, db);
-
-	remove_table_from_db(2, db);
-
-	free(types_table1);
-	free(types_table1_string);
-	free_serialized_data(ro);
-	free(serial_string);
-	close_database(db);
+	free_serialized_data(player_object_ro);
 
 	/* CLEAN UP */
 	glDeleteProgram(shader1);
@@ -466,6 +419,7 @@ int main()
 	destroy_object_list(fg_objects);
 
 	free_collision_memory();
+	close_database(db);
 
 	glfwTerminate();
 	return 0;

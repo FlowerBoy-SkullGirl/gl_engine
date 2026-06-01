@@ -1148,6 +1148,13 @@ int remove_table_from_db(int table_id, struct gl_db *db)
 	// f_replace_between rejects null data, so we give a pointer to some data and specify size 0 so none is written
 	f_replace_between(fp, &c, 0, table_pos, table_end, DB_IO_OVERWRITE);
 
+	// Decrement the number of rows in the table metadata
+	struct database_metadata database_md = get_database_metadata(db);
+	database_md.num_tables -= 1;
+
+	// Write the new value to the database
+	write_database_metadata(database_md, db);
+
 	return DB_SUCCESS;
 }
 
@@ -1317,6 +1324,8 @@ int add_row_to_table(struct row_object *ro, int table_id, struct gl_db *db)
 		write_column_data_types_to_table(ro->data_type_list, ro->column_count, table_id, db);
 	}
 	// Both cases are now converged with the data types being written to the table, matching the row object
+	// Update the locally stored table metadata 
+	table_md = get_table_metadata(table_id, db);
 	
 	// Find the end of the table, where the row will be appended
 	off_t table_end = 0;
@@ -1528,6 +1537,13 @@ int remove_row_from_table(int row_id, int table_id, struct gl_db *db)
 	// Decrement the row_pos offset so that the preceding delimiter is also erased
 	f_replace_between(fp, &c, 0, row_pos - 1, row_end, DB_IO_OVERWRITE);
 
+	// Decrement the number of rows in the table metadata
+	struct table_metadata table_md = get_table_metadata(table_id, db);
+	table_md.num_rows -= 1;
+
+	// Write the new value to the database
+	write_table_metadata(table_md, table_id, db);
+
 	return DB_SUCCESS;
 }
 
@@ -1614,8 +1630,40 @@ struct row_object *get_row_data(int row_id, int table_id, struct gl_db *db)
 	return ro;
 }
 
-// Update row by providing struct object, row index, table id, and database
-void update_row_data_at_index(struct row_object, int, int, struct gl_db *);
+// Update row by providing struct object, row id, table id, and database
+int update_row_data_by_id(struct row_object *ro, int row_id, int table_id, struct gl_db *db)
+{
+	/*
+	 * Manipulate the table metadata to ensure that the row id remains the same when writing a new table
+	 * Then set it back to the original values
+	 */
+
+	// Get current table_metadata
+	struct table_metadata table_md = get_table_metadata(table_id, db);
+	int current_row_id = table_md.newest_row_id;
+
+	// Return with an error if the row id cannot be present in the table
+	if (table_md.newest_row_id < row_id)
+		return DB_ERROR;
+
+	// Remove the current data with the desired row id
+	remove_row_from_table(row_id, table_id, db);
+
+	// Set the table newest row id metadata to 1 below the desired id, so that the next row is given that id
+	table_md.newest_row_id = row_id - 1;
+	// Write the metadata to the database
+	write_table_metadata(table_md, table_id, db);
+
+	// Add the new row data
+	add_row_to_table(ro, table_id, db);
+
+	// Rewrite the correct table metadata
+	table_md.newest_row_id = current_row_id;
+	// Write the metadata to the database
+	write_table_metadata(table_md, table_id, db);
+
+	return DB_SUCCESS;
+}
 
 // Query an int value by indices, table id, and database
 int get_int_from_database_index(int, int, int, struct gl_db *);
